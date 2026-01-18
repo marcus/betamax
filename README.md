@@ -1,14 +1,16 @@
 # Betamax
 
+![Betamax](betamax.png)
+
 Terminal session recorder for TUI apps. It uses tmux for headless operation of any terminal program.
 
-![Betamax](betamax.png)
+![Demo](gradient_wave.gif)
 
 ## Installation
 
 ```bash
 # Clone and add to PATH
-git clone https://github.com/youruser/betamax ~/code/betamax
+git clone https://github.com/marcus/betamax ~/code/betamax
 export PATH="$HOME/code/betamax:$PATH"
 
 # Or symlink to a directory in your PATH
