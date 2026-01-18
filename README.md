@@ -1,6 +1,6 @@
 # Betamax
 
-Terminal session recorder for TUI apps. Inspired by [charmbracelet/vhs](https://github.com/charmbracelet/vhs), using tmux for headless operation.
+Terminal session recorder for TUI apps. It uses tmux for headless operation of any terminal program.
 
 ![Betamax](betamax.png)
 
@@ -249,7 +249,6 @@ Enter
 Betamax is inspired by [VHS](https://github.com/charmbracelet/vhs) but takes a different approach:
 
 - **tmux-based**: Uses tmux for headless operation instead of a custom terminal emulator
-- **Lightweight**: Single bash script with minimal dependencies
 - **Declarative**: Keys files are self-describing with inline settings
 - **CI-friendly**: Reproducible captures for documentation and testing
 
