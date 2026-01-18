@@ -55,6 +55,16 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
+    title: 'Interactive Recording',
+    icon: 'icon-record',
+    description: (
+      <>
+        Record your terminal sessions with <code>betamax record</code>. Captures
+        keystrokes with precise timing for perfect playback.
+      </>
+    ),
+  },
+  {
     title: 'Multiple Output Formats',
     icon: 'icon-layers',
     description: (
@@ -81,16 +91,6 @@ const FeatureList: FeatureItem[] = [
       <>
         Uses tmux under the hood. No custom terminal emulator needed. Works
         in CI/CD pipelines and headless environments.
-      </>
-    ),
-  },
-  {
-    title: 'Precise Frame Control',
-    icon: 'icon-video',
-    description: (
-      <>
-        Capture frames exactly when you want. Create smooth, professional
-        GIF recordings with explicit control over every frame.
       </>
     ),
   },
@@ -130,14 +130,13 @@ brew install ffmpeg                  # for GIF`}
           <div className="col col--6">
             <h3>Basic Usage</h3>
             <CodeBlock language="bash">
-{`# Inline keys
-betamax "vim /tmp/test.txt" -- \\
-  i "hello world" Escape ":wq" Enter
+{`# Record your terminal session interactively
+betamax record -o demo.keys vim test.txt
 
-# From keys file
-betamax "myapp" -f capture.keys
+# Play back with GIF output
+betamax "vim test.txt" -f demo.keys
 
-# Quick screenshot
+# Or use inline keys directly
 betamax "htop" -- @sleep:1000 @capture:htop.png q`}
             </CodeBlock>
           </div>
