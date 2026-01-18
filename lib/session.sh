@@ -6,11 +6,13 @@ session_start() {
   tmux_cmd kill-session -t "$SESSION" 2>/dev/null || true
 
   # Start tmux session with the command
+  # remain-on-exit keeps the pane alive after command exits (for GIF capture)
   if [[ -n "$SHELL_OVERRIDE" ]]; then
     SHELL="$SHELL_OVERRIDE" tmux_cmd new-session -d -s "$SESSION" -x "$TERM_COLS" -y "$TERM_LINES" "$COMMAND"
   else
     tmux_cmd new-session -d -s "$SESSION" -x "$TERM_COLS" -y "$TERM_LINES" "$COMMAND"
   fi
+  tmux_cmd set-option -t "$SESSION" remain-on-exit on
 }
 
 session_wait_for_pattern() {

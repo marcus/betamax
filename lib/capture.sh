@@ -136,8 +136,9 @@ recording_stop() {
   [[ "$delay_cs" -lt 2 ]] && delay_cs=2  # Minimum 20ms per frame
 
   # Generate GIF with ffmpeg using frame delay
+  # reserve_transparent=0 prevents transparency which breaks macOS Preview
   ffmpeg -y -framerate 1 -i "$RECORDING_DIR/frame_%05d.png" \
-    -vf "settb=1,setpts=N*$delay_cs/100/TB,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
+    -vf "settb=1,setpts=N*$delay_cs/100/TB,split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=diff:reserve_transparent=0[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
     -r 100/$delay_cs \
     "$OUTPUT_DIR/$output_file" 2>/dev/null
 
