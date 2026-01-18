@@ -1,0 +1,62 @@
+# Test sidecar plugin navigation and capture
+# Captures screenshots of all 5 sidecar plugins
+
+@set:cols:200
+@set:rows:50
+@set:delay:100
+@set:output:./test/output/sidecar
+@set:shell:/bin/bash
+@require:sidecar
+@require:termshot
+
+@sleep:500
+
+# 1. TD plugin
+Escape
+Escape
+@sleep:100
+1
+@wait:Handoffs
+@sleep:200
+@capture:plugin-td.png
+
+# 2. Git plugin
+Escape
+Escape
+@sleep:100
+2
+@wait:Stage
+@sleep:200
+@capture:plugin-git.png
+
+# 3. Files plugin
+Escape
+Escape
+@sleep:100
+3
+@wait:Blame
+@sleep:200
+@capture:plugin-files.png
+
+# 4. Conversations plugin
+Escape
+Escape
+@sleep:100
+4
+@wait:Resume
+@sleep:200
+@capture:plugin-conversations.png
+
+# 5. Worktrees plugin
+Escape
+Escape
+@sleep:100
+5
+@wait:Kanban
+@sleep:200
+@capture:plugin-worktrees.png
+
+# Quit
+Escape
+q
+y

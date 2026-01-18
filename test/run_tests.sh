@@ -174,6 +174,46 @@ test_sleep_directive() {
   fi
 }
 
+# Test sidecar plugin navigation
+test_sidecar() {
+  echo ""
+  echo "=== Testing sidecar plugin capture ==="
+
+  if ! command -v sidecar &>/dev/null; then
+    warn "sidecar: not installed, skipping"
+    return 0
+  fi
+
+  local sidecar_out="$OUTPUT_DIR/sidecar"
+  mkdir -p "$sidecar_out"
+
+  # Run sidecar with plugin capture keys
+  "$PROJECT_DIR/betamax" sidecar -w Sidecar -f "$SCRIPT_DIR/sidecar-plugins.keys" 2>&1
+
+  echo ""
+  echo "Verifying sidecar outputs..."
+
+  local plugins=("td" "git" "files" "conversations" "worktrees")
+  local captured=0
+
+  for plugin in "${plugins[@]}"; do
+    if [[ -f "$sidecar_out/plugin-${plugin}.png" ]]; then
+      if file "$sidecar_out/plugin-${plugin}.png" | grep -q "PNG"; then
+        pass "sidecar: captured $plugin plugin"
+        ((captured++)) || true
+      else
+        fail "sidecar: $plugin capture not valid PNG"
+      fi
+    else
+      fail "sidecar: $plugin plugin not captured"
+    fi
+  done
+
+  if [[ $captured -eq 5 ]]; then
+    pass "sidecar: all 5 plugins captured successfully"
+  fi
+}
+
 # Summary
 summary() {
   echo ""
@@ -193,6 +233,7 @@ main() {
   test_capture_formats
   test_inline_delay
   test_sleep_directive
+  test_sidecar
   summary
 }
 
