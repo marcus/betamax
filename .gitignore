@@ -1,3 +1,4 @@
+# Task management
 .todos/
 
 # Sidecar worktree state files
@@ -12,3 +13,35 @@ website/node_modules/
 website/.docusaurus/
 website/build/
 website/.cache-loader/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+
+# pytest
+.pytest_cache/
+.benchmarks/
+
+# Test/recording artifacts
+captures/
+recording.keys
+*.cast
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
