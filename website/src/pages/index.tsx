@@ -142,6 +142,13 @@ betamax "htop" -- @sleep:1000 @capture:htop.png q`}
             </CodeBlock>
           </div>
         </div>
+        <div className={styles.quickStartDemo}>
+          <img
+            src="/betamax/img/demos/betamax_inline.gif"
+            alt="Betamax inline usage demo"
+            className={styles.quickStartGif}
+          />
+        </div>
       </div>
     </section>
   );

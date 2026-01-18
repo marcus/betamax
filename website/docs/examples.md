@@ -442,3 +442,36 @@ y
 ```
 
 **Pattern:** Use `@wait:PATTERN` to ensure the view is fully loaded before capturing.
+
+## 8. Capture Sidecar TUI
+
+Capture a screenshot of the Sidecar TUI application.
+
+**Keys file: `sidecar_capture.keys`**
+
+```bash
+@set:cols:180
+@set:rows:45
+@set:delay:100
+@require:termshot
+
+# Wait for sidecar to fully render
+@sleep:2000
+
+# Capture the main view
+@capture:sidecar_demo.png
+
+# Quit sidecar
+q
+y
+```
+
+**Command:**
+
+```bash
+betamax "sidecar" -o ./screenshots -f sidecar_capture.keys
+```
+
+**Expected output:** A PNG screenshot of the Sidecar TUI interface.
+
+![Sidecar TUI](/img/demos/sidecar_demo.png)

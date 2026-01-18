@@ -19,6 +19,26 @@
   }
 }
 
+.heroDemo {
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.heroDemoGif {
+  max-width: 600px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #2a2a4a;
+  box-shadow: 0 4px 20px rgba(0, 212, 170, 0.15);
+}
+
+.heroDemoCaption {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  font-style: italic;
+}
+
 .buttons {
   display: flex;
   align-items: center;
@@ -84,6 +104,19 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 1rem;
   margin-bottom: 1rem;
+}
+
+.quickStartDemo {
+  margin-top: 2.5rem;
+  text-align: center;
+}
+
+.quickStartGif {
+  max-width: 700px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #2a2a4a;
+  box-shadow: 0 4px 20px rgba(0, 212, 170, 0.15);
 }
 
 .outputFormats {

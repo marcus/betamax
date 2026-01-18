@@ -47,6 +47,8 @@ brew install ffmpeg
 betamax --help
 ```
 
+![betamax help](/img/demos/betamax_help.png)
+
 ## Your First Recording
 
 Capture a simple terminal session inline:
@@ -62,6 +64,8 @@ For more complex workflows, use a keys file:
 ```bash
 betamax "htop" -w "CPU" -- @sleep:1000 @capture:htop.png q
 ```
+
+![top demo](/img/demos/top_demo.png)
 
 ## Next Steps
 

@@ -1,0 +1,26 @@
+@set:cols:80
+@set:rows:24
+@set:delay:50
+@set:gif_delay:200
+
+@sleep:300
+@record:start
+@frame
+
+# Wait for cat output
+@sleep:2000
+@frame
+
+# Wait for command
+@sleep:2000
+@frame
+
+# Wait for done
+@sleep:1500
+@frame
+
+# Final pause
+@sleep:1000
+@frame
+
+@record:stop:betamax_keysfile.gif

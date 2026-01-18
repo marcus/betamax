@@ -1,0 +1,8 @@
+@set:cols:120
+@set:rows:30
+@set:delay:100
+@require:termshot
+
+@sleep:1500
+@capture:top_demo.png
+q

@@ -1,0 +1,7 @@
+@set:cols:100
+@set:rows:35
+@set:delay:100
+@require:termshot
+
+@sleep:500
+@capture:betamax_help.png

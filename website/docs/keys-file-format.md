@@ -7,6 +7,8 @@ title: Keys File Format
 
 Keys files are declarative scripts that define terminal interactions for Betamax. Each file is self-describing and contains all the information needed to reproduce a terminal session.
 
+![Betamax keys file workflow](/img/demos/betamax_keysfile.gif)
+
 ## Overview
 
 A keys file consists of:

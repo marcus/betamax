@@ -1,0 +1,57 @@
+# Vim typing demo for Betamax documentation
+# Types "Hello, Betamax!" character by character
+
+@set:cols:80
+@set:rows:24
+@set:delay:100
+@set:gif_delay:100
+
+# Wait for vim to load
+@sleep:500
+
+# Start recording and enter insert mode
+@record:start
+i
+@frame
+H
+@frame
+e
+@frame
+l
+@frame
+l
+@frame
+o
+@frame
+,
+@frame
+Space
+@frame
+B
+@frame
+e
+@frame
+t
+@frame
+a
+@frame
+m
+@frame
+a
+@frame
+x
+@frame
+!
+@frame
+
+# Exit insert mode and pause to show result
+Escape
+@sleep:400
+@frame
+
+# Stop recording BEFORE quitting vim
+@record:stop:vim_hello.gif
+
+# Quit vim
+:q!
+Enter

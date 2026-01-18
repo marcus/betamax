@@ -172,6 +172,10 @@ Enter           # Advance animation frame
 
 ## Complete Example
 
+Here's the output of this example:
+
+![Vim typing demo](/img/demos/vim_hello.gif)
+
 This example records a vim session typing a message:
 
 ```bash

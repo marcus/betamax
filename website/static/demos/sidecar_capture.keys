@@ -1,0 +1,14 @@
+@set:cols:180
+@set:rows:45
+@set:delay:100
+@require:termshot
+
+# Wait for sidecar to fully render
+@sleep:2000
+
+# Capture the main view
+@capture:sidecar_demo.png
+
+# Quit sidecar
+q
+y
