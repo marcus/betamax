@@ -185,11 +185,12 @@ def main():
     generator = KeysGenerator(keystrokes, generator_options)
     generator.save(args.output)
 
-    # Print summary
+    # Print summary (use filtered count for accurate user keystroke count)
+    user_keystroke_count = generator.count_user_keystrokes()
     print(file=sys.stderr)
     print(
         f"Recording saved to {args.output} "
-        f"({len(keystrokes)} keystrokes, {duration:.1f}s)",
+        f"({user_keystroke_count} keystrokes, {duration:.1f}s)",
         file=sys.stderr
     )
 

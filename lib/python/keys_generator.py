@@ -72,7 +72,7 @@ class KeysGenerator:
         if self.keystrokes:
             duration = self._calculate_duration()
             lines.append(f'# Duration: {duration:.1f}s')
-            lines.append(f'# Keystrokes: {len(self.keystrokes)}')
+            lines.append(f'# Keystrokes: {self.count_user_keystrokes()}')
         lines.append('')
 
         # Settings
@@ -185,3 +185,53 @@ class KeysGenerator:
         if len(delays) % 2 == 0:
             return (delays[mid - 1] + delays[mid]) // 2
         return delays[mid]
+
+    def count_user_keystrokes(self) -> int:
+        """
+        Count actual user keystrokes, filtering out terminal noise.
+
+        Terminal responses (device attributes, capability queries) arrive as
+        bursts of characters with no delay. This method filters them out to
+        give an accurate count of user input.
+        """
+        if not self.keystrokes:
+            return 0
+
+        # Terminal noise: escape sequence parts that aren't user input
+        TERMINAL_NOISE_KEYS = {'M-[', 'M-]', 'M-\\', 'M-P'}
+
+        count = 0
+        prev_time = None
+        in_terminal_response = False
+
+        for timestamp, key_name, _ in self.keystrokes:
+            # Calculate delay from previous keystroke
+            delay_ms = 0
+            if prev_time is not None:
+                delay_ms = int((timestamp - prev_time) * 1000)
+
+            # Detect terminal response sequences (arrive in rapid bursts)
+            if key_name == 'M-[':
+                in_terminal_response = True
+                prev_time = timestamp
+                continue
+
+            # End terminal response on significant delay (>20ms = user typing)
+            if delay_ms > 20:
+                in_terminal_response = False
+
+            # Skip terminal noise keys
+            if key_name in TERMINAL_NOISE_KEYS:
+                prev_time = timestamp
+                continue
+
+            # Skip keys that are part of a terminal response (CSI parameters)
+            if in_terminal_response and delay_ms < 5:
+                prev_time = timestamp
+                continue
+
+            # This is a user keystroke
+            count += 1
+            prev_time = timestamp
+
+        return count

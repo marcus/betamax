@@ -398,5 +398,75 @@ class TestMedianDelay:
         assert '@set:delay:200' in content
 
 
+class TestUserKeystrokeCount:
+    """Tests for count_user_keystrokes filtering terminal noise."""
+
+    def test_counts_simple_keystrokes(self):
+        """Normal keystrokes are counted."""
+        keystrokes = [
+            (0.0, 'h', b'h'),
+            (0.1, 'i', b'i'),
+            (0.2, 'Enter', b'\r'),
+        ]
+        generator = KeysGenerator(keystrokes)
+        assert generator.count_user_keystrokes() == 3
+
+    def test_filters_terminal_response_burst(self):
+        """Terminal response sequences (no delay) are filtered."""
+        # Simulates terminal response: ESC[?2026;2$y arriving as burst
+        keystrokes = [
+            (0.0, 'M-[', b'\x1b['),      # CSI start
+            (0.0, '?', b'?'),             # Response indicator
+            (0.0, '2', b'2'),             # Parameters
+            (0.0, '0', b'0'),
+            (0.0, '2', b'2'),
+            (0.0, '6', b'6'),
+            (0.0, ';', b';'),
+            (0.0, '2', b'2'),
+            (0.0, '$', b'$'),
+            (0.0, 'y', b'y'),             # Response terminator
+            (1.0, 'h', b'h'),             # User keystroke after 1s delay
+            (1.1, 'i', b'i'),
+        ]
+        generator = KeysGenerator(keystrokes)
+        # Only 'h' and 'i' should count
+        assert generator.count_user_keystrokes() == 2
+
+    def test_filters_osc_sequences(self):
+        """OSC/DCS/ST sequences are filtered."""
+        keystrokes = [
+            (0.0, 'M-]', b'\x1b]'),       # OSC start
+            (0.0, 'M-\\', b'\x1b\\'),     # ST (string terminator)
+            (0.5, 'x', b'x'),             # User keystroke
+        ]
+        generator = KeysGenerator(keystrokes)
+        assert generator.count_user_keystrokes() == 1
+
+    def test_empty_keystrokes(self):
+        """Empty list returns 0."""
+        generator = KeysGenerator([])
+        assert generator.count_user_keystrokes() == 0
+
+    def test_header_uses_filtered_count(self):
+        """Header comment uses filtered count, not raw count."""
+        # 10 terminal noise chars + 2 user keystrokes
+        keystrokes = [
+            (0.0, 'M-[', b'\x1b['),
+            (0.0, '?', b'?'),
+            (0.0, '1', b'1'),
+            (0.0, '2', b'2'),
+            (0.0, '3', b'3'),
+            (0.0, ';', b';'),
+            (0.0, '4', b'4'),
+            (0.0, 'c', b'c'),
+            (1.0, 'a', b'a'),             # User keystroke
+            (1.1, 'b', b'b'),             # User keystroke
+        ]
+        generator = KeysGenerator(keystrokes, {'command': 'test'})
+        content = generator.generate()
+        # Should report 2 keystrokes, not 10
+        assert '# Keystrokes: 2' in content
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
