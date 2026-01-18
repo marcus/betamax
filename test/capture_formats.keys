@@ -1,0 +1,35 @@
+# Test keys file for capture format testing
+# Tests: txt, html, png, and all formats
+
+@set:cols:80
+@set:rows:24
+@set:delay:100
+@set:output:./test/output
+
+# Wait for shell prompt
+@sleep:500
+
+# Generate some colorful output
+echo -e "\033[1;32mBetamax Capture Test\033[0m"
+Enter
+@sleep:200
+
+echo -e "\033[1;34m══════════════════════\033[0m"
+Enter
+@sleep:200
+
+echo -e "Format tests: \033[31mtxt\033[0m \033[33mhtml\033[0m \033[36mpng\033[0m"
+Enter
+@sleep:200
+
+# Capture as txt only
+@capture:test_txt.txt
+
+# Capture as html only
+@capture:test_html.html
+
+# Capture as png only
+@capture:test_png.png
+
+# Capture all formats
+@capture:test_all

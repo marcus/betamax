@@ -1,0 +1,24 @@
+
+The default interactive shell is now zsh.
+To update your account to use zsh, please run `chsh -s /bin/zsh`.
+For more details, please visit https://support.apple.com/kb/HT208050.
+bash-3.2$ echo -e "\033[1;32mBetamax Capture Test\033[0m"
+[1m[32mBetamax Capture Test[0m
+bash-3.2$ echo -e "\033[1;34m══════════════════════\033[0m"
+[1m[34m══════════════════════[0m
+bash-3.2$ echo -e "Format tests: \033[31mtxt\033[0m \033[33mhtml\033[0m \033[36m
+png\033[0m"
+Format tests: [31mtxt[39m [33mhtml[39m [36mpng[39m
+bash-3.2$
+
+
+
+
+
+
+
+
+
+
+
+

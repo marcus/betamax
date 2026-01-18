@@ -1,373 +1,50 @@
 #!/bin/bash
 # betamax - Terminal session recorder for TUI apps
 # Inspired by charmbracelet/vhs, using tmux for headless operation
-#
-# Usage:
-#   betamax [options] <command> -- <key1> <key2> ...
-#   betamax [options] <command> -f <keys-file>
-#
-# Options:
-#   -s, --session NAME    Session name (default: betamax)
-#   -d, --delay MS        Delay between keys in ms (default: 500)
-#   -w, --wait PATTERN    Wait for pattern before sending keys
-#   -t, --timeout SEC     Timeout waiting for app (default: 30)
-#   -k, --keep            Keep session alive after keys sent
-#   -c, --capture         Capture and print final pane state
-#   -o, --output-dir DIR  Output directory for captures (default: ./captures)
-#   -f, --keys-file FILE  Read keys from file (one per line)
-#   --cols COLS           Terminal width (default: current terminal)
-#   --rows ROWS           Terminal height (default: current terminal)
-#   --shell PATH          Shell to use in tmux session
-#
-# See README.md for full documentation
 
 set -e
 
-# Defaults
-SESSION="betamax"
-DELAY_MS=500
-DELAY_MS_SET_BY_CLI=false
-WAIT_PATTERN=""
-TIMEOUT=30
-TIMEOUT_SET_BY_CLI=false
-KEEP=false
-CAPTURE=false
-OUTPUT_DIR="./captures"
-OUTPUT_DIR_SET_BY_CLI=false
-KEYS_FILE=""
-TERM_COLS_OVERRIDE=""
-TERM_COLS_SET_BY_CLI=false
-TERM_ROWS_OVERRIDE=""
-TERM_ROWS_SET_BY_CLI=false
-SHELL_OVERRIDE=""
-SHELL_SET_BY_CLI=false
-COMMAND=""
-KEYS=()
+# Resolve script directory for sourcing modules
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Parse arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -s|--session)
-      SESSION="$2"
-      shift 2
-      ;;
-    -d|--delay)
-      DELAY_MS="$2"
-      DELAY_MS_SET_BY_CLI=true
-      shift 2
-      ;;
-    -w|--wait)
-      WAIT_PATTERN="$2"
-      shift 2
-      ;;
-    -t|--timeout)
-      TIMEOUT="$2"
-      TIMEOUT_SET_BY_CLI=true
-      shift 2
-      ;;
-    -k|--keep)
-      KEEP=true
-      shift
-      ;;
-    -c|--capture)
-      CAPTURE=true
-      shift
-      ;;
-    -o|--output-dir)
-      OUTPUT_DIR="$2"
-      OUTPUT_DIR_SET_BY_CLI=true
-      shift 2
-      ;;
-    -f|--keys-file)
-      KEYS_FILE="$2"
-      shift 2
-      ;;
-    --cols)
-      TERM_COLS_OVERRIDE="$2"
-      TERM_COLS_SET_BY_CLI=true
-      shift 2
-      ;;
-    --rows)
-      TERM_ROWS_OVERRIDE="$2"
-      TERM_ROWS_SET_BY_CLI=true
-      shift 2
-      ;;
-    --shell)
-      SHELL_OVERRIDE="$2"
-      SHELL_SET_BY_CLI=true
-      shift 2
-      ;;
-    --)
-      shift
-      KEYS=("$@")
-      break
-      ;;
-    -h|--help)
-      head -22 "$0" | tail -21
-      exit 0
-      ;;
-    *)
-      if [[ -z "$COMMAND" ]]; then
-        COMMAND="$1"
-      else
-        echo "Error: Unexpected argument: $1" >&2
-        exit 1
-      fi
-      shift
-      ;;
-  esac
-done
+# Source modules
+source "$SCRIPT_DIR/lib/config.sh"
+source "$SCRIPT_DIR/lib/args.sh"
+source "$SCRIPT_DIR/lib/keys.sh"
+source "$SCRIPT_DIR/lib/capture.sh"
+source "$SCRIPT_DIR/lib/session.sh"
+source "$SCRIPT_DIR/lib/runner.sh"
 
-if [[ -z "$COMMAND" ]]; then
-  echo "Error: No command specified" >&2
-  echo "Usage: $0 [options] <command> -- <key1> <key2> ..." >&2
-  exit 1
-fi
+main() {
+  # Parse command line arguments
+  parse_args "$@"
 
-# Load keys from file if specified
-if [[ -n "$KEYS_FILE" ]]; then
-  if [[ ! -f "$KEYS_FILE" ]]; then
-    echo "Error: Keys file not found: $KEYS_FILE" >&2
-    exit 1
+  # Load keys from file if specified
+  load_keys_file
+
+  # Process @set and @require directives
+  process_directives
+
+  # Compute runtime values
+  compute_delay_sec
+  compute_terminal_size
+
+  # Start tmux session
+  session_start
+
+  # Wait for initial pattern if specified
+  session_wait_for_pattern
+
+  # Send keys
+  run_keys
+
+  # Capture final state if requested
+  if [[ "$CAPTURE" == true ]]; then
+    capture_final
   fi
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    # Strip inline comments (but preserve # in quoted strings would need more complex parsing)
-    line="${line%%#*}"
-    # Trim whitespace
-    line="${line#"${line%%[![:space:]]*}"}"
-    line="${line%"${line##*[![:space:]]}"}"
-    # Skip empty lines
-    [[ -z "$line" ]] && continue
-    KEYS+=("$line")
-  done < "$KEYS_FILE"
-fi
 
-# Pre-process @set directives and @require from keys (CLI flags override)
-REQUIRED_CMDS=()
-FILTERED_KEYS=()
-for key in "${KEYS[@]}"; do
-  case "$key" in
-    @set:cols:*)
-      [[ "$TERM_COLS_SET_BY_CLI" != true ]] && TERM_COLS_OVERRIDE="${key#@set:cols:}"
-      ;;
-    @set:rows:*)
-      [[ "$TERM_ROWS_SET_BY_CLI" != true ]] && TERM_ROWS_OVERRIDE="${key#@set:rows:}"
-      ;;
-    @set:delay:*)
-      [[ "$DELAY_MS_SET_BY_CLI" != true ]] && DELAY_MS="${key#@set:delay:}"
-      ;;
-    @set:output:*)
-      [[ "$OUTPUT_DIR_SET_BY_CLI" != true ]] && OUTPUT_DIR="${key#@set:output:}"
-      ;;
-    @set:timeout:*)
-      [[ "$TIMEOUT_SET_BY_CLI" != true ]] && TIMEOUT="${key#@set:timeout:}"
-      ;;
-    @set:shell:*)
-      [[ "$SHELL_SET_BY_CLI" != true ]] && SHELL_OVERRIDE="${key#@set:shell:}"
-      ;;
-    @require:*)
-      REQUIRED_CMDS+=("${key#@require:}")
-      ;;
-    *)
-      FILTERED_KEYS+=("$key")
-      ;;
-  esac
-done
-KEYS=("${FILTERED_KEYS[@]}")
-
-# Validate all @require dependencies
-if [[ ${#REQUIRED_CMDS[@]} -gt 0 ]]; then
-  MISSING=()
-  for cmd in "${REQUIRED_CMDS[@]}"; do
-    if ! command -v "$cmd" &>/dev/null; then
-      MISSING+=("$cmd")
-    fi
-  done
-  if [[ ${#MISSING[@]} -gt 0 ]]; then
-    echo "Error: Missing required commands: ${MISSING[*]}" >&2
-    exit 1
-  fi
-fi
-
-# Convert ms to seconds for sleep
-DELAY_SEC=$(echo "scale=3; $DELAY_MS / 1000" | bc)
-
-# Capture helper function for file output
-capture_to_file() {
-  local name="$1"
-  local format="$2"  # txt, html, png, or "all"
-
-  mkdir -p "$OUTPUT_DIR"
-  local txt_file="$OUTPUT_DIR/$name.txt"
-
-  # Always capture ANSI text first (needed for all formats)
-  tmux capture-pane -t "$SESSION" -e -p > "$txt_file"
-
-  case "$format" in
-    txt)
-      echo "Saved: $txt_file"
-      ;;
-    html)
-      if command -v aha &>/dev/null; then
-        cat "$txt_file" | aha --black > "$OUTPUT_DIR/$name.html"
-        echo "Saved: $OUTPUT_DIR/$name.html"
-      else
-        echo "Warning: aha not installed, skipping HTML"
-      fi
-      rm -f "$txt_file"
-      ;;
-    png)
-      if command -v termshot &>/dev/null; then
-        local cols
-        cols=$(tmux display-message -t "$SESSION" -p '#{pane_width}')
-        termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
-        echo "Saved: $OUTPUT_DIR/$name.png"
-      else
-        echo "Warning: termshot not installed, skipping PNG"
-      fi
-      rm -f "$txt_file"
-      ;;
-    all)
-      # Keep txt
-      echo "Saved: $txt_file"
-      # Add html if aha available
-      if command -v aha &>/dev/null; then
-        cat "$txt_file" | aha --black > "$OUTPUT_DIR/$name.html"
-        echo "Saved: $OUTPUT_DIR/$name.html"
-      fi
-      # Add png if termshot available
-      if command -v termshot &>/dev/null; then
-        local cols
-        cols=$(tmux display-message -t "$SESSION" -p '#{pane_width}')
-        termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
-        echo "Saved: $OUTPUT_DIR/$name.png"
-      fi
-      ;;
-  esac
+  # Cleanup
+  session_cleanup
 }
 
-# Get terminal dimensions (use overrides if provided)
-TERM_COLS="${TERM_COLS_OVERRIDE:-$(tput cols 2>/dev/null || echo 80)}"
-TERM_LINES="${TERM_ROWS_OVERRIDE:-$(tput lines 2>/dev/null || echo 24)}"
-
-# Kill any existing session with same name
-tmux kill-session -t "$SESSION" 2>/dev/null || true
-
-# Start tmux session with the command (using current terminal size)
-# Use shell override if specified for environment isolation
-if [[ -n "$SHELL_OVERRIDE" ]]; then
-  SHELL="$SHELL_OVERRIDE" tmux new-session -d -s "$SESSION" -x "$TERM_COLS" -y "$TERM_LINES" "$COMMAND"
-else
-  tmux new-session -d -s "$SESSION" -x "$TERM_COLS" -y "$TERM_LINES" "$COMMAND"
-fi
-
-# Wait for pattern if specified
-if [[ -n "$WAIT_PATTERN" ]]; then
-  echo "Waiting for '$WAIT_PATTERN'..."
-  for ((i=0; i<TIMEOUT*2; i++)); do
-    if tmux capture-pane -t "$SESSION" -p 2>/dev/null | grep -q "$WAIT_PATTERN"; then
-      echo "Pattern found, sending keys..."
-      sleep "$DELAY_SEC"
-      break
-    fi
-    sleep 0.5
-  done
-
-  if ! tmux capture-pane -t "$SESSION" -p 2>/dev/null | grep -q "$WAIT_PATTERN"; then
-    echo "Error: Timeout waiting for pattern '$WAIT_PATTERN'" >&2
-    tmux kill-session -t "$SESSION" 2>/dev/null || true
-    exit 1
-  fi
-fi
-
-# Send each key with delay, handling special @ commands
-CAPTURE_COUNT=0
-for key in "${KEYS[@]}"; do
-  case "$key" in
-    @capture:*)
-      # Capture to file(s)
-      spec="${key#@capture:}"
-      cap_name="${spec%.*}"
-      cap_ext="${spec##*.}"
-
-      if [[ "$cap_name" == "$cap_ext" ]]; then
-        # No extension: @capture:NAME → save all formats
-        capture_to_file "$cap_name" "all"
-      else
-        # Has extension: @capture:NAME.png → save specific format
-        capture_to_file "$cap_name" "$cap_ext"
-      fi
-      ;;
-    @capture)
-      # Capture current pane state to stdout
-      ((CAPTURE_COUNT++))
-      echo "=== Capture #$CAPTURE_COUNT ==="
-      tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo "(session ended)"
-      echo "========================"
-      ;;
-    @sleep:*)
-      # Sleep for specified milliseconds
-      MS="${key#@sleep:}"
-      SLEEP_SEC=$(echo "scale=3; $MS / 1000" | bc)
-      echo "Sleeping ${MS}ms..."
-      sleep "$SLEEP_SEC"
-      ;;
-    @wait:*)
-      # Wait for pattern (supports regex with /pattern/ syntax)
-      PATTERN="${key#@wait:}"
-      echo "Waiting for '$PATTERN'..."
-
-      # Check if regex (surrounded by //)
-      if [[ "$PATTERN" =~ ^/(.+)/$ ]]; then
-        REGEX="${BASH_REMATCH[1]}"
-        GREP_OPTS="-E"
-      else
-        REGEX="$PATTERN"
-        GREP_OPTS="-F"
-      fi
-
-      for ((i=0; i<TIMEOUT*2; i++)); do
-        if tmux capture-pane -t "$SESSION" -p 2>/dev/null | grep -q $GREP_OPTS "$REGEX"; then
-          break
-        fi
-        sleep 0.5
-      done
-      ;;
-    @pause)
-      # Wait for user input (interactive debugging)
-      echo "Paused. Press Enter to continue..."
-      read -r
-      ;;
-    *)
-      # Check for inline timing override: key@MS
-      if [[ "$key" =~ ^(.+)@([0-9]+)$ ]]; then
-        ACTUAL_KEY="${BASH_REMATCH[1]}"
-        CUSTOM_MS="${BASH_REMATCH[2]}"
-        CUSTOM_SEC=$(echo "scale=3; $CUSTOM_MS / 1000" | bc)
-        tmux send-keys -t "$SESSION" "$ACTUAL_KEY"
-        sleep "$CUSTOM_SEC"
-      else
-        # Regular key - send to tmux with default delay
-        tmux send-keys -t "$SESSION" "$key"
-        sleep "$DELAY_SEC"
-      fi
-      ;;
-  esac
-done
-
-# Capture final state if requested
-if [[ "$CAPTURE" == true ]]; then
-  sleep "$DELAY_SEC"
-  echo "=== Final pane state ==="
-  tmux capture-pane -t "$SESSION" -p 2>/dev/null || echo "(session ended)"
-  echo "========================"
-fi
-
-# Clean up or keep session
-if [[ "$KEEP" == true ]]; then
-  echo "Session '$SESSION' kept alive. Attach with: tmux attach -t $SESSION"
-else
-  sleep "$DELAY_SEC"
-  tmux kill-session -t "$SESSION" 2>/dev/null || true
-  echo "Done"
-fi
+main "$@"
