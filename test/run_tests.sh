@@ -257,6 +257,43 @@ test_gif_recording() {
   fi
 }
 
+# Test gradient wave GIF (animated rainbow logo)
+test_gradient_wave() {
+  echo ""
+  echo "=== Testing gradient wave GIF ==="
+
+  if ! command -v termshot &>/dev/null; then
+    warn "gradient: termshot not installed, skipping"
+    return 0
+  fi
+
+  if ! command -v ffmpeg &>/dev/null; then
+    warn "gradient: ffmpeg not installed, skipping"
+    return 0
+  fi
+
+  # Run bash with gradient wave keys file
+  "$PROJECT_DIR/betamax" bash -o "$OUTPUT_DIR" -f "$SCRIPT_DIR/gradient_wave.keys" 2>&1
+
+  echo ""
+  echo "Verifying gradient wave GIF..."
+
+  if [[ -f "$OUTPUT_DIR/gradient_wave.gif" ]]; then
+    if file "$OUTPUT_DIR/gradient_wave.gif" | grep -q "GIF"; then
+      local size=$(stat -f%z "$OUTPUT_DIR/gradient_wave.gif" 2>/dev/null || stat -c%s "$OUTPUT_DIR/gradient_wave.gif" 2>/dev/null)
+      if [[ "$size" -gt 5000 ]]; then
+        pass "gradient: valid GIF created (${size} bytes)"
+      else
+        fail "gradient: GIF too small (${size} bytes)"
+      fi
+    else
+      fail "gradient: file not valid GIF format"
+    fi
+  else
+    fail "gradient: gradient_wave.gif not created"
+  fi
+}
+
 # Summary
 summary() {
   echo ""
@@ -277,6 +314,7 @@ main() {
   test_inline_delay
   test_sleep_directive
   test_gif_recording
+  test_gradient_wave
   test_sidecar
   summary
 }

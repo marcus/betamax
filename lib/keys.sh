@@ -23,6 +23,49 @@ load_keys_file() {
   done < "$KEYS_FILE"
 }
 
+expand_loops() {
+  local EXPANDED_KEYS=()
+  local in_loop=false
+  local loop_count=0
+  local loop_body=()
+
+  for key in "${KEYS[@]}"; do
+    if [[ "$key" == @repeat:* ]]; then
+      if [[ "$in_loop" == true ]]; then
+        echo "Error: Nested @repeat not supported" >&2
+        exit 1
+      fi
+      in_loop=true
+      loop_count="${key#@repeat:}"
+      loop_body=()
+    elif [[ "$key" == "@end" ]]; then
+      if [[ "$in_loop" != true ]]; then
+        echo "Error: @end without matching @repeat" >&2
+        exit 1
+      fi
+      # Expand the loop
+      for ((i=0; i<loop_count; i++)); do
+        for body_key in "${loop_body[@]}"; do
+          EXPANDED_KEYS+=("$body_key")
+        done
+      done
+      in_loop=false
+      loop_body=()
+    elif [[ "$in_loop" == true ]]; then
+      loop_body+=("$key")
+    else
+      EXPANDED_KEYS+=("$key")
+    fi
+  done
+
+  if [[ "$in_loop" == true ]]; then
+    echo "Error: @repeat without matching @end" >&2
+    exit 1
+  fi
+
+  KEYS=("${EXPANDED_KEYS[@]}")
+}
+
 process_directives() {
   local REQUIRED_CMDS=()
   local FILTERED_KEYS=()

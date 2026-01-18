@@ -23,12 +23,20 @@ run_keys() {
         capture_to_stdout "$CAPTURE_COUNT"
         ;;
       @sleep:*)
-        local MS="${key#@sleep:}"
+        local sleep_spec="${key#@sleep:}"
+        local MS CAPTURE_FRAMES=false
+        # Check for :capture suffix
+        if [[ "$sleep_spec" == *:capture ]]; then
+          MS="${sleep_spec%:capture}"
+          CAPTURE_FRAMES=true
+        else
+          MS="$sleep_spec"
+        fi
         local SLEEP_SEC=$(echo "scale=3; $MS / 1000" | bc)
         echo "Sleeping ${MS}ms..."
-        recording_capture_frame  # Capture before sleep
+        [[ "$CAPTURE_FRAMES" == true ]] && recording_capture_frame
         sleep "$SLEEP_SEC"
-        recording_capture_frame  # Capture after sleep
+        [[ "$CAPTURE_FRAMES" == true ]] && recording_capture_frame
         ;;
       @wait:*)
         local PATTERN="${key#@wait:}"

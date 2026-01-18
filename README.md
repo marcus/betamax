@@ -34,6 +34,31 @@ betamax "vim /tmp/test.txt" -- i "hello world" Escape ":wq" Enter
 betamax "myapp" -f capture-screenshot.keys
 ```
 
+## Output Formats
+
+Betamax can capture terminal output in multiple formats:
+
+| Format | Extension | Description | Dependency |
+|--------|-----------|-------------|------------|
+| **Text** | `.txt` | Raw text with ANSI color codes preserved | none |
+| **HTML** | `.html` | Styled HTML with colors rendered | `aha` |
+| **PNG** | `.png` | Screenshot image of terminal | `termshot` |
+| **GIF** | `.gif` | Animated recording of terminal session | `termshot` + `ffmpeg` |
+
+```bash
+# Capture as PNG screenshot
+betamax "htop" -- @sleep:1000 @capture:htop.png q
+
+# Capture as HTML
+betamax "ls --color" -- @capture:listing.html
+
+# Capture all formats at once
+betamax "neofetch" -- @sleep:500 @capture:system
+
+# Record animated GIF
+betamax "./my-tui-app" -f record.keys  # uses @record:start/@frame/@record:stop
+```
+
 ## Usage
 
 ```
@@ -107,6 +132,7 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | Action | Description |
 |--------|-------------|
 | `@sleep:MS` | Wait MS milliseconds |
+| `@sleep:MS:capture` | Wait MS milliseconds, capture frames before/after |
 | `@wait:PATTERN` | Wait for text pattern to appear |
 | `@wait:/REGEX/` | Wait for regex pattern to match |
 | `@capture` | Capture to stdout |
@@ -118,6 +144,8 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@record:start` | Start GIF recording |
 | `@record:stop:NAME.gif` | Stop recording and save GIF |
 | `@frame` | Capture a frame (during recording) |
+| `@repeat:N` | Begin a loop that repeats N times |
+| `@end` | End the current `@repeat` loop |
 
 ### Key Syntax
 
@@ -236,14 +264,15 @@ Enter
 **How GIF recording works:**
 - `@record:start` begins a recording session
 - `@frame` captures the current terminal state as a frame
-- `@sleep` automatically captures frames before and after the pause
+- `@sleep:MS:capture` captures frames before and after the pause (opt-in)
 - `@record:stop:NAME.gif` compiles frames into an animated GIF
 - Use `@set:gif_delay:MS` to control playback speed (default: 200ms per frame)
+- Use `@repeat:N` / `@end` to loop repetitive frame sequences
 
 **Tips:**
 - Use `@frame` after each key you want visible in the animation
-- Use `@sleep` to add pauses that highlight important states
-- Frames are only captured at explicit points, not on every keystroke
+- Use `@sleep:MS:capture` to add pauses that also capture frames
+- Frames are only captured at explicit `@frame` or `@sleep:MS:capture` points
 - For apps that quit (like vim), frames after exit are gracefully skipped
 
 ## Design Philosophy

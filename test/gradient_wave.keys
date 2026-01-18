@@ -1,0 +1,23 @@
+# Test: Animated rainbow gradient wave on betamax logo
+# Creates a GIF showing colors cycling through the ASCII art
+
+@set:cols:50
+@set:rows:10
+@set:delay:20
+@set:gif_delay:50
+
+# Wait for animator to start and display first frame
+@sleep:500
+
+# Start recording only after first frame is visible
+@record:start
+@frame
+
+# Advance through all 24 phases for smooth animation
+@repeat:23
+Enter
+@sleep:50
+@frame
+@end
+
+@record:stop:gradient_wave.gif

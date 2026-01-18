@@ -22,6 +22,9 @@ main() {
   # Load keys from file if specified
   load_keys_file
 
+  # Expand @repeat loops
+  expand_loops
+
   # Process @set and @require directives
   process_directives
 
