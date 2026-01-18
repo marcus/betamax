@@ -6,6 +6,19 @@
   background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
 }
 
+.heroLogo {
+  max-width: 400px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .heroLogo {
+    max-width: 280px;
+  }
+}
+
 .buttons {
   display: flex;
   align-items: center;
