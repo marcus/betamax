@@ -467,6 +467,50 @@ class TestUserKeystrokeCount:
         # Should report 2 keystrokes, not 10
         assert '# Keystrokes: 2' in content
 
+    def test_generated_file_excludes_terminal_noise(self):
+        """Generated .keys file should not contain terminal noise."""
+        # Simulates a recording with terminal responses + user input
+        keystrokes = [
+            # Terminal response burst at start (device attributes)
+            (0.0, 'M-[', b'\x1b['),
+            (0.0, '?', b'?'),
+            (0.0, '6', b'6'),
+            (0.0, '4', b'4'),
+            (0.0, ';', b';'),
+            (0.0, '1', b'1'),
+            (0.0, 'c', b'c'),
+            # OSC sequence
+            (0.001, 'M-]', b'\x1b]'),
+            (0.001, '1', b'1'),
+            (0.001, '1', b'1'),
+            (0.001, 'M-\\', b'\x1b\\'),
+            # User input after delay
+            (2.0, 'i', b'i'),
+            (2.1, 'h', b'h'),
+            (2.2, 'i', b'i'),
+            (2.5, 'Escape', b'\x1b'),
+            (3.0, ':', b':'),
+            (3.1, 'q', b'q'),
+            (3.2, '!', b'!'),
+            (3.5, 'Enter', b'\r'),
+        ]
+        generator = KeysGenerator(keystrokes, {'command': 'vim'})
+        content = generator.generate()
+
+        # Terminal noise should NOT appear in output
+        assert 'M-[' not in content
+        assert 'M-]' not in content
+        assert 'M-\\' not in content
+
+        # User keystrokes SHOULD appear
+        lines = content.split('\n')
+        key_lines = [l for l in lines if l and not l.startswith('#') and not l.startswith('@')]
+        # Should have: i, h, i, Escape, :, q, !, Enter
+        assert len(key_lines) == 8
+        assert 'i' in content
+        assert 'Escape' in content
+        assert 'Enter' in content
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

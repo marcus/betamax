@@ -19,6 +19,10 @@ class KeysGenerator:
         generator.save('output.keys')
     """
 
+    # Terminal noise: escape sequence parts that aren't user input
+    # These are responses FROM the terminal, not user keystrokes
+    TERMINAL_NOISE_KEYS = {'M-[', 'M-]', 'M-\\', 'M-P'}
+
     def __init__(
         self,
         keystrokes: List[Tuple[float, str, bytes]],
@@ -56,6 +60,9 @@ class KeysGenerator:
         self.command = self.options.get('command', '')
         self.frame_key = self.options.get('frame_key', 'C-g')
 
+        # Filter and cache user keystrokes (excludes terminal noise)
+        self._user_keystrokes = None
+
     def generate(self) -> str:
         """
         Generate the .keys file content.
@@ -91,11 +98,12 @@ class KeysGenerator:
         if self.gif_output:
             lines.append('@record:start')
 
-        # Process keystrokes
+        # Process filtered keystrokes (terminal noise removed)
+        user_keystrokes = self._get_user_keystrokes()
         prev_time = None
-        for i, (timestamp, key_name, raw_bytes) in enumerate(self.keystrokes):
-            # Skip the frame marker key itself
-            if key_name == self.frame_key and i in self.frame_markers:
+        for orig_idx, timestamp, key_name, raw_bytes in user_keystrokes:
+            # Skip the frame marker key itself (use original index for frame_markers check)
+            if key_name == self.frame_key and orig_idx in self.frame_markers:
                 # Add frame marker but don't output the key
                 lines.append('@frame')
                 prev_time = timestamp
@@ -129,9 +137,6 @@ class KeysGenerator:
             if self.auto_frame:
                 lines.append('@frame')
 
-            # Note: Manual frame markers (frame_key presses) are handled at lines 98-102
-            # They filter out the frame_key itself and add @frame there
-
         # Stop recording if GIF mode
         if self.gif_output:
             lines.append(f'@record:stop:{self.gif_output}')
@@ -162,13 +167,14 @@ class KeysGenerator:
         return self.keystrokes[-1][0] - self.keystrokes[0][0]
 
     def _calculate_median_delay(self) -> int:
-        """Calculate median delay between keystrokes for @set:delay."""
-        if len(self.keystrokes) < 2:
+        """Calculate median delay between user keystrokes for @set:delay."""
+        user_keystrokes = self._get_user_keystrokes()
+        if len(user_keystrokes) < 2:
             return 100  # Default
 
         delays = []
         prev_time = None
-        for timestamp, _, _ in self.keystrokes:
+        for _, timestamp, _, _ in user_keystrokes:
             if prev_time is not None:
                 delay_ms = int((timestamp - prev_time) * 1000)
                 # Only include reasonable delays
@@ -186,31 +192,36 @@ class KeysGenerator:
             return (delays[mid - 1] + delays[mid]) // 2
         return delays[mid]
 
-    def count_user_keystrokes(self) -> int:
+    def _get_user_keystrokes(self) -> List[Tuple[int, float, str, bytes]]:
         """
-        Count actual user keystrokes, filtering out terminal noise.
+        Filter and return only user keystrokes, excluding terminal noise.
 
         Terminal responses (device attributes, capability queries) arrive as
         bursts of characters with no delay. This method filters them out to
-        give an accurate count of user input.
+        return only actual user input.
+
+        Returns:
+            List of (original_index, timestamp, key_name, raw_bytes) tuples
         """
+        if self._user_keystrokes is not None:
+            return self._user_keystrokes
+
         if not self.keystrokes:
-            return 0
+            self._user_keystrokes = []
+            return self._user_keystrokes
 
-        # Terminal noise: escape sequence parts that aren't user input
-        TERMINAL_NOISE_KEYS = {'M-[', 'M-]', 'M-\\', 'M-P'}
-
-        count = 0
+        filtered = []
         prev_time = None
         in_terminal_response = False
 
-        for timestamp, key_name, _ in self.keystrokes:
+        for i, (timestamp, key_name, raw_bytes) in enumerate(self.keystrokes):
             # Calculate delay from previous keystroke
             delay_ms = 0
             if prev_time is not None:
                 delay_ms = int((timestamp - prev_time) * 1000)
 
             # Detect terminal response sequences (arrive in rapid bursts)
+            # M-[ starts a CSI sequence which could be a terminal response
             if key_name == 'M-[':
                 in_terminal_response = True
                 prev_time = timestamp
@@ -220,18 +231,29 @@ class KeysGenerator:
             if delay_ms > 20:
                 in_terminal_response = False
 
-            # Skip terminal noise keys
-            if key_name in TERMINAL_NOISE_KEYS:
+            # Skip terminal noise keys (OSC, DCS, ST introducers)
+            if key_name in self.TERMINAL_NOISE_KEYS:
                 prev_time = timestamp
                 continue
 
             # Skip keys that are part of a terminal response (CSI parameters)
+            # These arrive in rapid bursts with <5ms between them
             if in_terminal_response and delay_ms < 5:
                 prev_time = timestamp
                 continue
 
-            # This is a user keystroke
-            count += 1
+            # This is a user keystroke - include it with original index
+            filtered.append((i, timestamp, key_name, raw_bytes))
             prev_time = timestamp
 
-        return count
+        self._user_keystrokes = filtered
+        return self._user_keystrokes
+
+    def count_user_keystrokes(self) -> int:
+        """
+        Count actual user keystrokes, filtering out terminal noise.
+
+        Returns:
+            Number of user keystrokes (excluding terminal responses)
+        """
+        return len(self._get_user_keystrokes())
