@@ -1,0 +1,126 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.features {
+  padding: 4rem 0;
+  background: #0a0a0f;
+}
+
+.featureCard {
+  background: #12121a;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  height: 100%;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.featureCard:hover {
+  border-color: #00d4aa;
+  transform: translateY(-2px);
+}
+
+.featureCard h3 {
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.featureCard p {
+  color: #888;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.featureIcon {
+  font-size: 2rem;
+  color: #00d4aa;
+}
+
+.quickStart {
+  padding: 4rem 0;
+  background: #12121a;
+  border-top: 1px solid #2a2a4a;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.quickStart h2 {
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.quickStart h3 {
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.outputFormats {
+  padding: 4rem 0;
+  background: #0a0a0f;
+}
+
+.outputFormats h2 {
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.formatGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .formatGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.formatCard {
+  background: #12121a;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.formatCard:hover {
+  border-color: #00d4aa;
+}
+
+.formatCard code {
+  display: block;
+  color: #00d4aa;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.formatCard span {
+  color: #888;
+  font-size: 0.85rem;
+}

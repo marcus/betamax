@@ -1,1 +1,14 @@
 .todos/
+
+# Sidecar worktree state files
+.sidecar-agent
+.sidecar-task
+.sidecar-pr
+.sidecar-start.sh
+.td-root
+
+# Docusaurus
+website/node_modules/
+website/.docusaurus/
+website/build/
+website/.cache-loader/
