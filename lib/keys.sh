@@ -47,6 +47,9 @@ process_directives() {
       @set:shell:*)
         [[ "$SHELL_SET_BY_CLI" != true ]] && SHELL_OVERRIDE="${key#@set:shell:}"
         ;;
+      @set:gif_delay:*)
+        GIF_FRAME_DELAY_MS="${key#@set:gif_delay:}"
+        ;;
       @require:*)
         REQUIRED_CMDS+=("${key#@require:}")
         ;;

@@ -27,6 +27,13 @@ DELAY_SEC=""
 TERM_COLS=""
 TERM_LINES=""
 
+# GIF recording state
+RECORDING=false
+RECORDING_DIR=""
+RECORDING_FRAME=0
+RECORDING_COLS=""
+GIF_FRAME_DELAY_MS=200  # Time each frame displays in GIF (default: 200ms)
+
 # tmux socket name (isolates betamax sessions)
 TMUX_SOCKET="betamax"
 

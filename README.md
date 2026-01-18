@@ -20,6 +20,7 @@ ln -s ~/code/betamax/betamax /usr/local/bin/betamax
 - `tmux` - required for headless terminal sessions
 - `termshot` - for PNG output (`brew install homeport/tap/termshot`)
 - `aha` - for HTML output (`brew install aha`)
+- `ffmpeg` - for GIF recording (`brew install ffmpeg`)
 
 ## Quick Start
 
@@ -96,6 +97,7 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@set:output:DIR` | Output directory (overridden by `-o`) |
 | `@set:timeout:SEC` | Wait timeout (overridden by `-t`) |
 | `@set:shell:PATH` | Shell for consistent environment (overridden by `--shell`) |
+| `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) |
 | `@require:CMD` | Fail fast if CMD not in PATH |
 
 ### Actions
@@ -111,6 +113,9 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@capture:NAME.txt` | Save as plain text with ANSI codes |
 | `@capture:NAME` | Save all available formats |
 | `@pause` | Wait for Enter (interactive debugging) |
+| `@record:start` | Start GIF recording |
+| `@record:stop:NAME.gif` | Stop recording and save GIF |
+| `@frame` | Capture a frame (during recording) |
 
 ### Key Syntax
 
@@ -179,6 +184,65 @@ betamax "htop" -w "CPU" --cols 120 --rows 30 -- \
 betamax "myapp" -k -f debug.keys
 # Session stays alive, attach with: tmux attach -t betamax
 ```
+
+### Record a GIF
+
+GIF recording captures frames at specific points, giving you precise control over the animation.
+
+```bash
+betamax 'vim --clean -c "set shortmess+=I"' -f record-vim.keys
+```
+
+Where `record-vim.keys`:
+```bash
+@set:cols:80
+@set:rows:24
+@set:delay:80
+
+# Wait for vim to load
+@sleep:400
+
+# Start recording
+@record:start
+
+# Type with frame capture after each character
+i
+@frame
+H
+@frame
+e
+@frame
+l
+@frame
+l
+@frame
+o
+@frame
+
+# Exit insert mode and pause to show result
+Escape
+@sleep:300
+
+# Quit
+:q!
+Enter
+
+# Save the GIF
+@record:stop:vim-demo.gif
+```
+
+**How GIF recording works:**
+- `@record:start` begins a recording session
+- `@frame` captures the current terminal state as a frame
+- `@sleep` automatically captures frames before and after the pause
+- `@record:stop:NAME.gif` compiles frames into an animated GIF
+- Use `@set:gif_delay:MS` to control playback speed (default: 200ms per frame)
+
+**Tips:**
+- Use `@frame` after each key you want visible in the animation
+- Use `@sleep` to add pauses that highlight important states
+- Frames are only captured at explicit points, not on every keystroke
+- For apps that quit (like vim), frames after exit are gracefully skipped
 
 ## Design Philosophy
 

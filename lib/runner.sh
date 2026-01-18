@@ -26,7 +26,9 @@ run_keys() {
         local MS="${key#@sleep:}"
         local SLEEP_SEC=$(echo "scale=3; $MS / 1000" | bc)
         echo "Sleeping ${MS}ms..."
+        recording_capture_frame  # Capture before sleep
         sleep "$SLEEP_SEC"
+        recording_capture_frame  # Capture after sleep
         ;;
       @wait:*)
         local PATTERN="${key#@wait:}"
@@ -51,6 +53,18 @@ run_keys() {
       @pause)
         echo "Paused. Press Enter to continue..."
         read -r
+        ;;
+      @record:start)
+        recording_start
+        recording_capture_frame  # Capture initial state
+        ;;
+      @record:stop:*)
+        local gif_name="${key#@record:stop:}"
+        recording_stop "$gif_name"
+        ;;
+      @frame)
+        # Explicit frame capture
+        recording_capture_frame
         ;;
       *)
         # Check for inline timing override: key@MS

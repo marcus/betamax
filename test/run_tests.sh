@@ -214,6 +214,49 @@ test_sidecar() {
   fi
 }
 
+# Test GIF recording with vim
+test_gif_recording() {
+  echo ""
+  echo "=== Testing GIF recording ==="
+
+  if ! command -v vim &>/dev/null; then
+    warn "gif: vim not installed, skipping"
+    return 0
+  fi
+
+  if ! command -v termshot &>/dev/null; then
+    warn "gif: termshot not installed, skipping"
+    return 0
+  fi
+
+  if ! command -v ffmpeg &>/dev/null; then
+    warn "gif: ffmpeg not installed, skipping"
+    return 0
+  fi
+
+  # Run vim with GIF recording (--clean skips config, shortmess+=I skips intro)
+  "$PROJECT_DIR/betamax" 'vim --clean -c "set shortmess+=I"' -o "$OUTPUT_DIR" -f "$SCRIPT_DIR/vim_gif.keys" 2>&1
+
+  echo ""
+  echo "Verifying GIF output..."
+
+  if [[ -f "$OUTPUT_DIR/vim_test.gif" ]]; then
+    # Check if it's a valid GIF
+    if file "$OUTPUT_DIR/vim_test.gif" | grep -q "GIF"; then
+      local size=$(stat -f%z "$OUTPUT_DIR/vim_test.gif" 2>/dev/null || stat -c%s "$OUTPUT_DIR/vim_test.gif" 2>/dev/null)
+      if [[ "$size" -gt 1000 ]]; then
+        pass "gif: valid GIF created (${size} bytes)"
+      else
+        fail "gif: GIF too small (${size} bytes)"
+      fi
+    else
+      fail "gif: file not valid GIF format"
+    fi
+  else
+    fail "gif: vim_test.gif not created"
+  fi
+}
+
 # Summary
 summary() {
   echo ""
@@ -233,6 +276,7 @@ main() {
   test_capture_formats
   test_inline_delay
   test_sleep_directive
+  test_gif_recording
   test_sidecar
   summary
 }

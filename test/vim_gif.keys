@@ -1,0 +1,44 @@
+# Test: Record vim session as GIF
+# Opens vim, types a message, then quits
+
+@set:cols:80
+@set:rows:24
+@set:delay:80
+
+# Wait for vim to load
+@sleep:400
+
+# Start recording and enter insert mode
+@record:start
+i
+@frame
+B
+@frame
+e
+@frame
+t
+@frame
+a
+@frame
+m
+@frame
+a
+@frame
+x
+@frame
+Space
+@frame
+:
+@frame
+)
+@frame
+
+# Exit insert mode and pause
+Escape
+@sleep:300
+
+# Quit vim
+:q!
+Enter
+
+@record:stop:vim_test.gif
