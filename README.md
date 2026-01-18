@@ -22,6 +22,7 @@ ln -s ~/code/betamax/betamax /usr/local/bin/betamax
 ### Dependencies
 
 - `tmux` - required for headless terminal sessions
+- `python3` - required for interactive recording (`betamax record`)
 - `termshot` - for PNG output (`brew install homeport/tap/termshot`)
 - `aha` - for HTML output (`brew install aha`)
 - `ffmpeg` - for GIF recording (`brew install ffmpeg`)
@@ -35,6 +36,42 @@ betamax "vim /tmp/test.txt" -- i "hello world" Escape ":wq" Enter
 # Keys file
 betamax "myapp" -f capture-screenshot.keys
 ```
+
+## Recording Sessions
+
+Instead of writing `.keys` files manually, you can record your terminal session interactively:
+
+```bash
+# Record a vim session
+betamax record -o demo.keys vim test.txt
+
+# Record and generate GIF in one step
+betamax record --gif demo.gif --auto-frame vim test.txt
+
+# Record with manual frame marking (press Ctrl+G during recording)
+betamax record --frame-key C-g -o demo.keys htop
+```
+
+During recording:
+- **Ctrl+G** (or your custom `--frame-key`) marks a frame for GIF recording
+- **Ctrl+D** or typing `exit` ends the recording
+- All keystrokes are captured with timing information
+
+The generated `.keys` file can be replayed with `betamax` to produce consistent GIF output.
+
+### Recording Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output FILE` | Output .keys file (default: recording.keys) |
+| `--gif FILE` | Also generate GIF after recording |
+| `--auto-frame` | Add @frame after every keystroke |
+| `--frame-key KEY` | Hotkey to mark frames (default: C-g) |
+| `--delay MS` | Use fixed delay instead of measured timing |
+| `--min-delay MS` | Minimum delay between keys (default: 50ms) |
+| `--max-delay MS` | Maximum delay cap (default: 2000ms) |
+| `--max-duration SEC` | Max recording duration (default: 300s = 5 min) |
+| `--cols / --rows` | Terminal dimensions |
 
 ## Output Formats
 

@@ -1,0 +1,48 @@
+# Recorded with betamax record
+# Command: vim test.txt
+# Duration: 8.5s
+# Keystrokes: 23
+
+@set:cols:80
+@set:rows:24
+@set:delay:120
+
+@record:start
+i
+@frame
+H@150
+@frame
+e@80
+@frame
+l@90
+@frame
+l@85
+@frame
+o@100
+@frame
+,@110
+@frame
+Space@75
+@frame
+W@130
+@frame
+o@85
+@frame
+r@90
+@frame
+l@80
+@frame
+d@95
+@frame
+!@120
+@frame
+@sleep:500
+Escape
+@frame
+@sleep:300
+:@200
+w@150
+q@100
+Enter
+@frame
+@record:stop:vim_hello_world.gif

@@ -8,6 +8,11 @@ betamax - Terminal session recorder for TUI apps
 Usage:
   betamax [options] <command> -- <key1> <key2> ...
   betamax [options] <command> -f <keys-file>
+  betamax record [options] <command>
+
+Subcommands:
+  record    Record an interactive session to a .keys file
+            Run 'betamax record --help' for recording options
 
 Options:
   -s, --session NAME    Session name (default: betamax)

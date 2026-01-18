@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""
+betamax-record: Interactive terminal session recorder for betamax
+
+Records terminal sessions and generates .keys files for betamax playback.
+
+Usage:
+    betamax-record -o demo.keys vim test.txt
+    betamax-record --gif demo.gif --auto-frame vim test.txt
+"""
+
+import argparse
+import os
+import sys
+import subprocess
+
+# Add lib to path for imports
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LIB_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), 'lib', 'python')
+sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
+
+from lib.python.recorder import TerminalRecorder
+from lib.python.keys_generator import KeysGenerator
+
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Record terminal sessions for betamax',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  %(prog)s -o demo.keys vim test.txt
+      Record a vim session to demo.keys
+
+  %(prog)s --gif demo.gif --auto-frame vim test.txt
+      Record and generate GIF with frame after each keystroke
+
+  %(prog)s --frame-key C-f -o demo.keys htop
+      Use Ctrl+F to mark frames during recording
+'''
+    )
+
+    parser.add_argument(
+        'command',
+        nargs='*',
+        default=['bash'],
+        help='Command to record (default: bash)'
+    )
+
+    parser.add_argument(
+        '-o', '--output',
+        default='recording.keys',
+        help='Output .keys file (default: recording.keys)'
+    )
+
+    parser.add_argument(
+        '--gif',
+        metavar='FILE',
+        help='Also generate GIF after recording'
+    )
+
+    parser.add_argument(
+        '--auto-frame',
+        action='store_true',
+        help='Add @frame after every keystroke'
+    )
+
+    parser.add_argument(
+        '--frame-key',
+        default='C-g',
+        help='Hotkey to mark frames (default: C-g)'
+    )
+
+    parser.add_argument(
+        '--delay',
+        type=int,
+        metavar='MS',
+        help='Use fixed delay instead of measured timing'
+    )
+
+    parser.add_argument(
+        '--min-delay',
+        type=int,
+        default=50,
+        metavar='MS',
+        help='Minimum delay between keys (default: 50ms)'
+    )
+
+    parser.add_argument(
+        '--max-delay',
+        type=int,
+        default=2000,
+        metavar='MS',
+        help='Maximum delay cap (default: 2000ms)'
+    )
+
+    parser.add_argument(
+        '--cols',
+        type=int,
+        help='Terminal width (default: current terminal)'
+    )
+
+    parser.add_argument(
+        '--rows',
+        type=int,
+        help='Terminal height (default: current terminal)'
+    )
+
+    parser.add_argument(
+        '--max-duration',
+        type=int,
+        default=300,
+        metavar='SEC',
+        help='Max recording duration in seconds (default: 300s = 5 min)'
+    )
+
+    return parser.parse_args()
+
+
+def main():
+    """Main entry point."""
+    args = parse_args()
+
+    # Get terminal size if not specified
+    try:
+        term_size = os.get_terminal_size()
+        cols = args.cols or term_size.columns
+        rows = args.rows or term_size.lines
+    except OSError:
+        cols = args.cols or 80
+        rows = args.rows or 24
+
+    # Build options dict
+    options = {
+        'auto_frame': args.auto_frame,
+        'frame_key': args.frame_key,
+        'min_delay': args.min_delay,
+        'max_delay': args.max_delay,
+        'max_duration': args.max_duration,
+        'cols': cols,
+        'rows': rows,
+    }
+    if args.delay:
+        options['fixed_delay'] = args.delay
+
+    # Print startup message
+    frame_hint = f" Press {args.frame_key} to mark frames." if not args.auto_frame else ""
+    print(f"Recording started.{frame_hint} Ctrl+D or exit to stop.", file=sys.stderr)
+    print(f"Command: {' '.join(args.command)}", file=sys.stderr)
+    print(file=sys.stderr)
+
+    # Create and run recorder
+    recorder = TerminalRecorder(args.output, args.command, options)
+
+    try:
+        recorder.record()
+    except KeyboardInterrupt:
+        print("\nRecording interrupted.", file=sys.stderr)
+
+    # Get recorded data
+    keystrokes = recorder.get_keystrokes()
+    frame_markers = recorder.get_frame_markers()
+    duration = recorder.get_duration()
+
+    if not keystrokes:
+        print("No keystrokes recorded.", file=sys.stderr)
+        sys.exit(1)
+
+    # Generate .keys file
+    generator_options = {
+        'cols': cols,
+        'rows': rows,
+        'auto_frame': args.auto_frame,
+        'frame_markers': frame_markers,
+        'min_delay': args.min_delay,
+        'max_delay': args.max_delay,
+        'gif_output': args.gif,
+        'command': ' '.join(args.command),
+        'frame_key': args.frame_key,
+    }
+    if args.delay:
+        generator_options['fixed_delay'] = args.delay
+
+    generator = KeysGenerator(keystrokes, generator_options)
+    generator.save(args.output)
+
+    # Print summary
+    print(file=sys.stderr)
+    print(
+        f"Recording saved to {args.output} "
+        f"({len(keystrokes)} keystrokes, {duration:.1f}s)",
+        file=sys.stderr
+    )
+
+    # Generate GIF if requested
+    if args.gif:
+        print("Generating GIF...", file=sys.stderr)
+
+        # Find betamax script
+        betamax_script = os.path.join(os.path.dirname(SCRIPT_DIR), 'betamax')
+
+        try:
+            result = subprocess.run(
+                [
+                    betamax_script,
+                    *args.command,
+                    '-f', args.output,
+                    '--cols', str(cols),
+                    '--rows', str(rows),
+                ],
+                check=True
+            )
+            print(f"Saved: {args.gif}", file=sys.stderr)
+        except subprocess.CalledProcessError as e:
+            print(f"GIF generation failed: {e}", file=sys.stderr)
+            sys.exit(1)
+        except FileNotFoundError:
+            print(f"betamax not found at {betamax_script}", file=sys.stderr)
+            sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

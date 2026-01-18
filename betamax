@@ -7,6 +7,12 @@ set -e
 # Resolve script directory for sourcing modules
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Check for record subcommand before sourcing modules
+if [[ "${1:-}" == "record" ]]; then
+  shift
+  exec "$SCRIPT_DIR/bin/betamax-record" "$@"
+fi
+
 # Source modules
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/args.sh"
