@@ -74,6 +74,8 @@ class TerminalRecorder:
 
         # Max duration (default 5 minutes)
         self._max_duration = self.options.get('max_duration', 300)
+        self._max_duration_reached = False
+        self._exit_status: Optional[int] = None
 
     def record(self) -> None:
         """
@@ -111,16 +113,29 @@ class TerminalRecorder:
             else:
                 # Parent process - record I/O
                 self._set_pty_size(cols, rows)
-                self.start_time = time.time()
+                self.start_time = time.monotonic()
                 self._running = True
                 self._copy_with_logging()
-                self.end_time = time.time()
+                self.end_time = time.monotonic()
+
+                # Wait for child process to prevent zombies
+                try:
+                    _, status = os.waitpid(self._child_pid, 0)
+                    self._exit_status = os.WEXITSTATUS(status) if os.WIFEXITED(status) else -1
+                except OSError:
+                    self._exit_status = -1
 
         except Exception as e:
             # Re-raise after cleanup
             raise
         finally:
             self._restore_terminal()
+            # Print max duration message after terminal is restored
+            if self._max_duration_reached:
+                sys.stderr.write(
+                    f"\nMax duration ({self._max_duration}s) reached. "
+                    "Recording stopped.\n"
+                )
 
     def _setup_signals(self) -> None:
         """Set up signal handlers for clean shutdown and resize."""
@@ -155,16 +170,13 @@ class TerminalRecorder:
         escape_timeout = 0.05  # 50ms timeout for escape sequences
 
         while self._running:
-            # Check max duration
+            # Check max duration (don't restore terminal here - let finally block do it)
             if self._max_duration and self.start_time:
-                elapsed = time.time() - self.start_time
+                elapsed = time.monotonic() - self.start_time
                 if elapsed >= self._max_duration:
-                    # Write message to stderr (restore terminal first for clean output)
-                    self._restore_terminal()
-                    sys.stderr.write(
-                        f"\nMax duration ({self._max_duration}s) reached. "
-                        "Stopping recording.\n"
-                    )
+                    self._running = False
+                    # Message will be printed after terminal restoration
+                    self._max_duration_reached = True
                     break
             try:
                 # Set up select with timeout for escape handling
@@ -221,8 +233,8 @@ class TerminalRecorder:
             self._log_keys(keys)
 
     def _log_keys(self, keys: List[Tuple[str, bytes]]) -> None:
-        """Log parsed keystrokes with timestamps."""
-        current_time = time.time()
+        """Log parsed keystrokes with timestamps (monotonic for reliable delays)."""
+        current_time = time.monotonic()
 
         for key_name, raw_bytes in keys:
             self.keystrokes.append((current_time, key_name, raw_bytes))

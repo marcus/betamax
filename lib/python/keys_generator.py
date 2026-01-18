@@ -111,8 +111,8 @@ class KeysGenerator:
                 elif delay_ms > self.max_delay:
                     delay_ms = self.max_delay
 
-                # Use @sleep for very long delays
-                if delay_ms >= 500 and delay_ms > 0:
+                # Use @sleep for very long delays (>= 500ms)
+                if delay_ms >= 500:
                     lines.append(f'@sleep:{delay_ms}')
                     lines.append(key_name)
                 elif delay_ms > 0 and delay_ms != default_delay:

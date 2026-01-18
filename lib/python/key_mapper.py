@@ -83,6 +83,12 @@ class KeyMapper:
         """Initialize the key mapper with an empty buffer."""
         self._buffer = b''
         self._last_read_time = 0.0
+        # Pre-sort escape sequences once (longest first for matching)
+        self._sorted_sequences = sorted(
+            self.ESCAPE_SEQUENCES.items(),
+            key=lambda x: len(x[0]),
+            reverse=True
+        )
 
     def parse_input(self, data: bytes, timeout_occurred: bool = False) -> List[Tuple[str, bytes]]:
         """
@@ -101,13 +107,9 @@ class KeyMapper:
         while self._buffer:
             # Check if buffer starts with escape
             if self._buffer[0:1] == b'\x1b':
-                # Try to match escape sequences (longest first)
+                # Try to match escape sequences (pre-sorted, longest first)
                 matched = False
-                for seq, key_name in sorted(
-                    self.ESCAPE_SEQUENCES.items(),
-                    key=lambda x: len(x[0]),
-                    reverse=True
-                ):
+                for seq, key_name in self._sorted_sequences:
                     if self._buffer.startswith(seq):
                         results.append((key_name, seq))
                         self._buffer = self._buffer[len(seq):]
