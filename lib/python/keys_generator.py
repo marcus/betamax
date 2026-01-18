@@ -129,9 +129,8 @@ class KeysGenerator:
             if self.auto_frame:
                 lines.append('@frame')
 
-            # Manual frame marker
-            if i in self.frame_markers:
-                lines.append('@frame')
+            # Note: Manual frame markers (frame_key presses) are handled at lines 98-102
+            # They filter out the frame_key itself and add @frame there
 
         # Stop recording if GIF mode
         if self.gif_output:

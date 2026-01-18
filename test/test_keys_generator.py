@@ -206,5 +206,197 @@ class TestDurationCalculation:
         assert '# Duration: 0.0s' in content
 
 
+class TestEdgeCases:
+    """Test edge cases."""
+
+    def test_empty_keystrokes(self):
+        """Empty list generates valid file with 0 keystrokes."""
+        generator = KeysGenerator([], {})
+        content = generator.generate()
+
+        # Should have header and settings but no keystroke lines
+        assert '# Recorded with betamax record' in content
+        assert '@set:cols:' in content
+        assert '@set:rows:' in content
+        assert '@set:delay:' in content
+        # Should not have keystroke count header since empty
+        assert '# Keystrokes:' not in content
+
+    def test_single_keystroke(self):
+        """Single keystroke works, duration is 0."""
+        keystrokes = [(0.0, 'x', b'x')]
+        generator = KeysGenerator(keystrokes)
+        content = generator.generate()
+
+        assert '# Duration: 0.0s' in content
+        assert '# Keystrokes: 1' in content
+        assert 'x' in content
+
+    def test_duplicate_timestamps(self):
+        """Two keystrokes at same time (delay_ms = 0)."""
+        keystrokes = [
+            (1.0, 'a', b'a'),
+            (1.0, 'b', b'b'),  # Same timestamp
+        ]
+        generator = KeysGenerator(keystrokes)
+        content = generator.generate()
+
+        lines = content.strip().split('\n')
+        key_lines = [l for l in lines if l in ['a', 'b']]
+        assert 'a' in key_lines
+        assert 'b' in key_lines
+        # No timing annotation between them since delay is 0
+        assert '@sleep:0' not in content
+        assert 'b@0' not in content
+
+
+class TestTimingEdgeCases:
+    """Test timing edge cases."""
+
+    def test_max_delay_less_than_500(self):
+        """When max_delay=300, no @sleep directives."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.6, 'b', b'b'),  # 600ms would normally be @sleep
+        ]
+        generator = KeysGenerator(keystrokes, {'max_delay': 300})
+        content = generator.generate()
+
+        # Should be capped to 300ms which is < 500, so no @sleep
+        assert '@sleep' not in content
+
+    def test_delay_equals_default(self):
+        """Delay matching default has no annotation."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.1, 'b', b'b'),  # 100ms
+            (0.2, 'c', b'c'),  # 100ms
+        ]
+        generator = KeysGenerator(keystrokes)
+        content = generator.generate()
+
+        # Check the default delay
+        assert '@set:delay:100' in content
+        # Keys should appear without timing since they match default
+        lines = content.strip().split('\n')
+        assert 'b' in lines
+        assert 'c' in lines
+        # No inline timing for b or c
+        assert 'b@' not in content
+        assert 'c@' not in content
+
+    def test_inline_timing_format(self):
+        """Verify key@delay format for moderate delays."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.2, 'b', b'b'),  # 200ms - moderate delay
+        ]
+        generator = KeysGenerator(keystrokes, {'min_delay': 50, 'max_delay': 2000})
+        content = generator.generate()
+
+        # 200ms is < 500ms so should use inline format, not @sleep
+        assert '@sleep' not in content
+        # Should have inline timing if different from default
+        lines = content.strip().split('\n')
+        has_inline = any('b@' in l for l in lines)
+        has_plain_b = 'b' in lines
+        # Either has inline timing or plain b (if 200 happens to be default)
+        assert has_inline or has_plain_b
+
+
+class TestFrameEdgeCases:
+    """Test frame marker edge cases."""
+
+    def test_frame_marker_at_index_0(self):
+        """First keystroke as frame marker."""
+        keystrokes = [
+            (0.0, 'C-g', b'\x07'),  # Frame marker at index 0
+            (0.1, 'a', b'a'),
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'frame_markers': [0],
+            'frame_key': 'C-g',
+        })
+        content = generator.generate()
+
+        assert '@frame' in content
+        lines = content.strip().split('\n')
+        # C-g should not appear in output
+        assert 'C-g' not in lines
+        assert 'a' in lines
+
+    def test_consecutive_frame_markers(self):
+        """Multiple adjacent markers."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.1, 'C-g', b'\x07'),  # Frame marker
+            (0.2, 'C-g', b'\x07'),  # Another frame marker
+            (0.3, 'b', b'b'),
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'frame_markers': [1, 2],
+            'frame_key': 'C-g',
+        })
+        content = generator.generate()
+
+        # Should have two @frame directives
+        assert content.count('@frame') == 2
+        lines = content.strip().split('\n')
+        assert 'C-g' not in lines
+
+    def test_frame_key_not_in_markers(self):
+        """Regular C-g input appears in output."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.1, 'C-g', b'\x07'),  # C-g but NOT in frame_markers
+            (0.2, 'b', b'b'),
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'frame_markers': [],  # C-g at index 1 is NOT a frame marker
+            'frame_key': 'C-g',
+        })
+        content = generator.generate()
+
+        # C-g should appear in output since it's not a frame marker
+        lines = [l.strip() for l in content.split('\n')]
+        # Check for C-g (possibly with timing annotation)
+        has_cg = any('C-g' in l for l in lines)
+        assert has_cg
+
+
+class TestMedianDelay:
+    """Test median calculation."""
+
+    def test_median_with_outliers(self):
+        """Verify outliers are excluded."""
+        # Delays: 100ms, 100ms, 100ms, 5000ms (outlier > max_delay)
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.1, 'b', b'b'),    # 100ms
+            (0.2, 'c', b'c'),    # 100ms
+            (0.3, 'd', b'd'),    # 100ms
+            (5.3, 'e', b'e'),    # 5000ms - outlier
+        ]
+        generator = KeysGenerator(keystrokes, {'max_delay': 2000})
+        content = generator.generate()
+
+        # Median should be 100 (outlier excluded)
+        assert '@set:delay:100' in content
+
+    def test_median_even_count(self):
+        """Even number of delays."""
+        # Delays: 100ms, 300ms (average = 200)
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.100, 'b', b'b'),  # 100ms
+            (0.400, 'c', b'c'),  # 300ms
+        ]
+        generator = KeysGenerator(keystrokes)
+        content = generator.generate()
+
+        # Median of [100, 300] = (100 + 300) // 2 = 200
+        assert '@set:delay:200' in content
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

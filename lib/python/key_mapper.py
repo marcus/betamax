@@ -17,11 +17,35 @@ class KeyMapper:
 
     # Escape sequences mapped to betamax key names (longest first for matching)
     ESCAPE_SEQUENCES = {
-        # Ctrl+Arrow keys (common terminal variants)
+        # Shift+Arrow keys (modifier 2)
+        b'\x1b[1;2A': 'S-Up',
+        b'\x1b[1;2B': 'S-Down',
+        b'\x1b[1;2C': 'S-Right',
+        b'\x1b[1;2D': 'S-Left',
+
+        # Alt+Arrow keys (modifier 3)
+        b'\x1b[1;3A': 'M-Up',
+        b'\x1b[1;3B': 'M-Down',
+        b'\x1b[1;3C': 'M-Right',
+        b'\x1b[1;3D': 'M-Left',
+
+        # Ctrl+Arrow keys (modifier 5)
         b'\x1b[1;5A': 'C-Up',
         b'\x1b[1;5B': 'C-Down',
         b'\x1b[1;5C': 'C-Right',
         b'\x1b[1;5D': 'C-Left',
+
+        # Ctrl+Shift+Arrow keys (modifier 6)
+        b'\x1b[1;6A': 'C-S-Up',
+        b'\x1b[1;6B': 'C-S-Down',
+        b'\x1b[1;6C': 'C-S-Right',
+        b'\x1b[1;6D': 'C-S-Left',
+
+        # Alt+Shift+Arrow keys (modifier 4)
+        b'\x1b[1;4A': 'M-S-Up',
+        b'\x1b[1;4B': 'M-S-Down',
+        b'\x1b[1;4C': 'M-S-Right',
+        b'\x1b[1;4D': 'M-S-Left',
 
         # Function keys
         b'\x1b[15~': 'F5',
@@ -148,17 +172,48 @@ class KeyMapper:
 
                 if byte_val in self.SPECIAL_KEYS:
                     key_name = self.SPECIAL_KEYS[byte_val]
+                    results.append((key_name, self._buffer[0:1]))
+                    self._buffer = self._buffer[1:]
                 elif byte_val in self.CONTROL_CHARS:
                     key_name = self.CONTROL_CHARS[byte_val]
+                    results.append((key_name, self._buffer[0:1]))
+                    self._buffer = self._buffer[1:]
                 elif 0x20 <= byte_val <= 0x7e:
                     # Printable ASCII
                     key_name = chr(byte_val)
+                    results.append((key_name, self._buffer[0:1]))
+                    self._buffer = self._buffer[1:]
+                elif byte_val >= 0x80:
+                    # UTF-8 multi-byte sequence
+                    try:
+                        # Determine sequence length from first byte
+                        if byte_val & 0b11100000 == 0b11000000:
+                            length = 2  # 110xxxxx = 2-byte sequence
+                        elif byte_val & 0b11110000 == 0b11100000:
+                            length = 3  # 1110xxxx = 3-byte sequence
+                        elif byte_val & 0b11111000 == 0b11110000:
+                            length = 4  # 11110xxx = 4-byte sequence
+                        else:
+                            raise ValueError('Invalid UTF-8 start byte')
+
+                        if len(self._buffer) < length:
+                            # Incomplete sequence, wait for more data
+                            break
+
+                        utf8_bytes = self._buffer[:length]
+                        char = utf8_bytes.decode('utf-8', errors='strict')
+                        results.append((char, utf8_bytes))
+                        self._buffer = self._buffer[length:]
+                    except (ValueError, UnicodeDecodeError):
+                        # Invalid UTF-8, output as hex
+                        key_name = f'0x{byte_val:02x}'
+                        results.append((key_name, self._buffer[0:1]))
+                        self._buffer = self._buffer[1:]
                 else:
                     # Unknown byte - output as hex
                     key_name = f'0x{byte_val:02x}'
-
-                results.append((key_name, self._buffer[0:1]))
-                self._buffer = self._buffer[1:]
+                    results.append((key_name, self._buffer[0:1]))
+                    self._buffer = self._buffer[1:]
 
         return results
 

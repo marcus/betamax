@@ -264,5 +264,101 @@ class TestBuffering:
         assert result == [('Escape', b'\x1b')]
 
 
+class TestUTF8Characters:
+    """Test UTF-8 multi-byte character handling."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_2byte_utf8(self):
+        # 'é' (U+00E9) is 2-byte UTF-8: 0xC3 0xA9
+        result = self.mapper.parse_input('é'.encode('utf-8'))
+        assert result == [('é', b'\xc3\xa9')]
+
+    def test_3byte_utf8(self):
+        # '€' (U+20AC) is 3-byte UTF-8: 0xE2 0x82 0xAC
+        result = self.mapper.parse_input('€'.encode('utf-8'))
+        assert result == [('€', b'\xe2\x82\xac')]
+
+    def test_4byte_utf8(self):
+        # '😀' (U+1F600) is 4-byte UTF-8: 0xF0 0x9F 0x98 0x80
+        result = self.mapper.parse_input('😀'.encode('utf-8'))
+        assert result == [('😀', b'\xf0\x9f\x98\x80')]
+
+    def test_incomplete_utf8_waits(self):
+        # Send first byte of 2-byte UTF-8 'é' only
+        result = self.mapper.parse_input(b'\xc3')
+        assert result == []
+        assert self.mapper.has_pending()
+        # Complete the sequence
+        result = self.mapper.parse_input(b'\xa9')
+        assert result == [('é', b'\xc3\xa9')]
+
+    def test_invalid_utf8_as_hex(self):
+        # Invalid UTF-8 continuation byte without start byte
+        result = self.mapper.parse_input(b'\x80')
+        assert result == [('0x80', b'\x80')]
+
+
+class TestModifierArrowKeys:
+    """Test Shift/Alt modifier arrow key mapping."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_shift_arrows(self):
+        assert self.mapper.parse_input(b'\x1b[1;2A') == [('S-Up', b'\x1b[1;2A')]
+        assert self.mapper.parse_input(b'\x1b[1;2B') == [('S-Down', b'\x1b[1;2B')]
+        assert self.mapper.parse_input(b'\x1b[1;2C') == [('S-Right', b'\x1b[1;2C')]
+        assert self.mapper.parse_input(b'\x1b[1;2D') == [('S-Left', b'\x1b[1;2D')]
+
+    def test_alt_arrows(self):
+        assert self.mapper.parse_input(b'\x1b[1;3A') == [('M-Up', b'\x1b[1;3A')]
+        assert self.mapper.parse_input(b'\x1b[1;3B') == [('M-Down', b'\x1b[1;3B')]
+        assert self.mapper.parse_input(b'\x1b[1;3C') == [('M-Right', b'\x1b[1;3C')]
+        assert self.mapper.parse_input(b'\x1b[1;3D') == [('M-Left', b'\x1b[1;3D')]
+
+    def test_ctrl_shift_arrows(self):
+        assert self.mapper.parse_input(b'\x1b[1;6A') == [('C-S-Up', b'\x1b[1;6A')]
+        assert self.mapper.parse_input(b'\x1b[1;6B') == [('C-S-Down', b'\x1b[1;6B')]
+        assert self.mapper.parse_input(b'\x1b[1;6C') == [('C-S-Right', b'\x1b[1;6C')]
+        assert self.mapper.parse_input(b'\x1b[1;6D') == [('C-S-Left', b'\x1b[1;6D')]
+
+    def test_alt_shift_arrows(self):
+        assert self.mapper.parse_input(b'\x1b[1;4A') == [('M-S-Up', b'\x1b[1;4A')]
+        assert self.mapper.parse_input(b'\x1b[1;4B') == [('M-S-Down', b'\x1b[1;4B')]
+        assert self.mapper.parse_input(b'\x1b[1;4C') == [('M-S-Right', b'\x1b[1;4C')]
+        assert self.mapper.parse_input(b'\x1b[1;4D') == [('M-S-Left', b'\x1b[1;4D')]
+
+
+class TestEdgeCases:
+    """Test edge cases and unusual inputs."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_empty_input(self):
+        result = self.mapper.parse_input(b'')
+        assert result == []
+
+    def test_unknown_escape_sequence(self):
+        # Unknown/malformed CSI sequence - treated as M-[ (Alt+bracket) then rest
+        result = self.mapper.parse_input(b'\x1b[99X')
+        # ESC+[ is parsed as Alt+[ since '[' is printable
+        assert result[0] == ('M-[', b'\x1b[')
+        # Remaining '99X' parsed as individual printable chars
+        assert ('9', b'9') in result
+        assert ('X', b'X') in result
+
+    def test_alt_special_keys(self):
+        # Alt+Enter: ESC followed by CR - parsed separately (CR not printable)
+        result = self.mapper.parse_input(b'\x1b\r')
+        assert result == [('Escape', b'\x1b'), ('Enter', b'\r')]
+
+        # Alt+Tab: ESC followed by Tab - parsed separately (Tab not printable)
+        result = self.mapper.parse_input(b'\x1b\t')
+        assert result == [('Escape', b'\x1b'), ('Tab', b'\t')]
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
