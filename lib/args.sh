@@ -21,6 +21,7 @@ Options:
   --cols COLS           Terminal width (default: current terminal)
   --rows ROWS           Terminal height (default: current terminal)
   --shell PATH          Shell to use in tmux session
+  --validate-only       Validate keys file and exit (no execution)
 
 See README.md for full documentation
 EOF
@@ -78,6 +79,10 @@ parse_args() {
         SHELL_OVERRIDE="$2"
         SHELL_SET_BY_CLI=true
         shift 2
+        ;;
+      --validate-only)
+        VALIDATE_ONLY=true
+        shift
         ;;
       --)
         shift

@@ -306,9 +306,21 @@ summary() {
   fi
 }
 
+# Run validation tests
+run_validation_tests() {
+  echo ""
+  echo "=== Running validation tests ==="
+  if "$SCRIPT_DIR/validation_tests.sh"; then
+    pass "validation tests: all passed"
+  else
+    fail "validation tests: some failed"
+  fi
+}
+
 # Main
 main() {
   setup
+  run_validation_tests
   test_basic
   test_capture_formats
   test_inline_delay
