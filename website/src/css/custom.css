@@ -1,0 +1,202 @@
+/**
+ * Betamax - Terminal aesthetic theme
+ * Dark theme with monospace fonts and terminal colors
+ */
+
+/* Import JetBrains Mono for monospace */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --ifm-color-primary: #00d4aa;
+  --ifm-color-primary-dark: #00bf99;
+  --ifm-color-primary-darker: #00b391;
+  --ifm-color-primary-darkest: #009477;
+  --ifm-color-primary-light: #00e9bb;
+  --ifm-color-primary-lighter: #00f5c3;
+  --ifm-color-primary-lightest: #1affcf;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* Terminal colors */
+  --terminal-green: #00ff00;
+  --terminal-cyan: #00d4aa;
+  --terminal-bg: #1a1a2e;
+  --terminal-surface: #16213e;
+  --terminal-border: #2a2a4a;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #00d4aa;
+  --ifm-color-primary-dark: #00bf99;
+  --ifm-color-primary-darker: #00b391;
+  --ifm-color-primary-darkest: #009477;
+  --ifm-color-primary-light: #00e9bb;
+  --ifm-color-primary-lighter: #00f5c3;
+  --ifm-color-primary-lightest: #1affcf;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  --ifm-background-color: #0a0a0f;
+  --ifm-background-surface-color: #12121a;
+  --ifm-navbar-background-color: #0a0a0f;
+  --ifm-footer-background-color: #0a0a0f;
+}
+
+/* Monospace fonts throughout */
+html {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+.navbar__title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Code blocks styling */
+pre {
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+}
+
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Hero section styling */
+.hero {
+  background: linear-gradient(180deg, #0a0a0f 0%, #12121a 100%);
+  padding: 4rem 0;
+}
+
+.hero__title {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #00d4aa;
+}
+
+.hero__subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  color: #888;
+}
+
+/* Buttons */
+.button--primary {
+  background: linear-gradient(135deg, #00d4aa 0%, #00a888 100%);
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, #00e9bb 0%, #00bf99 100%);
+}
+
+.button--secondary {
+  border: 1px solid #00d4aa;
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.button--secondary:hover {
+  background: rgba(0, 212, 170, 0.1);
+  border-color: #00e9bb;
+  color: #00e9bb;
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--terminal-border);
+}
+
+.footer__title {
+  font-family: 'JetBrains Mono', monospace;
+  color: #00d4aa;
+}
+
+/* Navbar */
+.navbar {
+  border-bottom: 1px solid var(--terminal-border);
+}
+
+.navbar__link {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Sidebar */
+.menu__link {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Feature cards */
+.feature-card {
+  background: var(--terminal-surface);
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.feature-card:hover {
+  border-color: #00d4aa;
+}
+
+.feature-card h3 {
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Terminal demo container */
+.terminal-demo {
+  background: #1a1a2e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.terminal-demo__header {
+  background: #2a2a4a;
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-demo__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-demo__dot--red { background: #ff5f56; }
+.terminal-demo__dot--yellow { background: #ffbd2e; }
+.terminal-demo__dot--green { background: #27c93f; }
+
+.terminal-demo__content {
+  padding: 1rem;
+}
+
+.terminal-demo__content img {
+  width: 100%;
+  display: block;
+}
+
+/* Quick start section */
+.quick-start {
+  background: var(--terminal-surface);
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  padding: 2rem;
+  margin: 2rem 0;
+}
+
+.quick-start h2 {
+  color: #00d4aa;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 1rem;
+}
+
+/* Lucide icons */
+i[class^="icon-"] {
+  font-size: 1.25em;
+  vertical-align: middle;
+}
