@@ -1,27 +1,8 @@
 #!/bin/bash
 # betamax/lib/keys.sh - Keys file loading and directive processing
 
-load_keys_file() {
-  if [[ -z "$KEYS_FILE" ]]; then
-    return 0
-  fi
-
-  if [[ ! -f "$KEYS_FILE" ]]; then
-    echo "Error: Keys file not found: $KEYS_FILE" >&2
-    exit 1
-  fi
-
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    # Strip inline comments
-    line="${line%%#*}"
-    # Trim whitespace
-    line="${line#"${line%%[![:space:]]*}"}"
-    line="${line%"${line##*[![:space:]]}"}"
-    # Skip empty lines
-    [[ -z "$line" ]] && continue
-    KEYS+=("$line")
-  done < "$KEYS_FILE"
-}
+# Note: load_keys_file_with_lines() in validate.sh now handles file loading
+# with line tracking for validation error messages.
 
 expand_loops() {
   local EXPANDED_KEYS=()

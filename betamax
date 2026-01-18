@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/args.sh"
 source "$SCRIPT_DIR/lib/keys.sh"
+source "$SCRIPT_DIR/lib/validate.sh"
 source "$SCRIPT_DIR/lib/capture.sh"
 source "$SCRIPT_DIR/lib/session.sh"
 source "$SCRIPT_DIR/lib/runner.sh"
@@ -19,8 +20,17 @@ main() {
   # Parse command line arguments
   parse_args "$@"
 
-  # Load keys from file if specified
-  load_keys_file
+  # Load keys from file if specified (with line tracking for validation)
+  load_keys_file_with_lines
+
+  # Validate keys file before processing
+  validate_keys_file
+
+  # Exit early if only validating
+  if [[ "$VALIDATE_ONLY" == true ]]; then
+    echo "Validation passed"
+    exit 0
+  fi
 
   # Expand @repeat loops
   expand_loops
