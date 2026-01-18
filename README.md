@@ -2,6 +2,8 @@
 
 Terminal session recorder for TUI apps. Inspired by [charmbracelet/vhs](https://github.com/charmbracelet/vhs), using tmux for headless operation.
 
+![Betamax](betamax.png)
+
 ## Installation
 
 ```bash
