@@ -4,6 +4,8 @@
 
 Terminal session recorder for TUI apps. It uses tmux for headless operation of any terminal program.
 
+📖 **[Documentation](https://marcus.github.io/betamax/)** — Full docs, examples, and guides
+
 ![Demo](gradient_wave.gif)
 
 ## Installation

@@ -11,10 +11,10 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://marcusvorwaller.github.io',
+  url: 'https://marcus.github.io',
   baseUrl: '/betamax/',
 
-  organizationName: 'marcusvorwaller',
+  organizationName: 'marcus',
   projectName: 'betamax',
   trailingSlash: false,
 
@@ -41,7 +41,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/marcusvorwaller/betamax/tree/main/website/',
+          editUrl: 'https://github.com/marcus/betamax/tree/main/website/',
         },
         blog: false,
         theme: {
@@ -67,7 +67,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://github.com/marcusvorwaller/betamax',
+          href: 'https://github.com/marcus/betamax',
           label: 'GitHub',
           position: 'right',
         },
@@ -98,7 +98,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/marcusvorwaller/betamax',
+              href: 'https://github.com/marcus/betamax',
             },
           ],
         },

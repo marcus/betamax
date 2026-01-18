@@ -30,9 +30,17 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            href="https://github.com/marcusvorwaller/betamax">
+            href="https://github.com/marcus/betamax">
             View on GitHub
           </Link>
+        </div>
+        <div className={styles.heroDemo}>
+          <img
+            src="/betamax/img/gradient_wave.gif"
+            alt="Betamax animated demo"
+            className={styles.heroDemoGif}
+          />
+          <p className={styles.heroDemoCaption}>Animated ASCII art recorded with Betamax</p>
         </div>
       </div>
     </header>
@@ -110,7 +118,7 @@ function QuickStart() {
             <h3>Installation</h3>
             <CodeBlock language="bash">
 {`# Clone and add to PATH
-git clone https://github.com/marcusvorwaller/betamax
+git clone https://github.com/marcus/betamax
 export PATH="$PWD/betamax:$PATH"
 
 # Install dependencies (macOS)
