@@ -5,7 +5,7 @@
 declare -a ORIGINAL_LINES=()
 declare -a LINE_NUMBERS=()
 
-# Load keys file with line tracking (called instead of load_keys_file when validating)
+# Load keys file with line tracking for validation error messages
 load_keys_file_with_lines() {
   if [[ -z "$KEYS_FILE" ]]; then
     return 0
