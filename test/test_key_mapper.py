@@ -360,5 +360,181 @@ class TestEdgeCases:
         assert result == [('Escape', b'\x1b'), ('Tab', b'\t')]
 
 
+class TestCtrlFunctionKeys:
+    """Test Ctrl+Function key mapping."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_ctrl_f1(self):
+        result = self.mapper.parse_input(b'\x1b[1;5P')
+        assert result == [('C-F1', b'\x1b[1;5P')]
+
+    def test_ctrl_f2(self):
+        result = self.mapper.parse_input(b'\x1b[1;5Q')
+        assert result == [('C-F2', b'\x1b[1;5Q')]
+
+    def test_ctrl_f5(self):
+        result = self.mapper.parse_input(b'\x1b[15;5~')
+        assert result == [('C-F5', b'\x1b[15;5~')]
+
+    def test_ctrl_f12(self):
+        result = self.mapper.parse_input(b'\x1b[24;5~')
+        assert result == [('C-F12', b'\x1b[24;5~')]
+
+
+class TestAltFunctionKeys:
+    """Test Alt+Function key mapping."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_alt_f1(self):
+        result = self.mapper.parse_input(b'\x1b[1;3P')
+        assert result == [('M-F1', b'\x1b[1;3P')]
+
+    def test_alt_f5(self):
+        result = self.mapper.parse_input(b'\x1b[15;3~')
+        assert result == [('M-F5', b'\x1b[15;3~')]
+
+    def test_alt_f12(self):
+        result = self.mapper.parse_input(b'\x1b[24;3~')
+        assert result == [('M-F12', b'\x1b[24;3~')]
+
+
+class TestShiftFunctionKeys:
+    """Test Shift+Function key mapping."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_shift_f1(self):
+        result = self.mapper.parse_input(b'\x1b[1;2P')
+        assert result == [('S-F1', b'\x1b[1;2P')]
+
+    def test_shift_f5(self):
+        result = self.mapper.parse_input(b'\x1b[15;2~')
+        assert result == [('S-F5', b'\x1b[15;2~')]
+
+
+class TestBracketedPaste:
+    """Test bracketed paste mode markers."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_paste_start(self):
+        result = self.mapper.parse_input(b'\x1b[200~')
+        assert result == [('PasteStart', b'\x1b[200~')]
+
+    def test_paste_end(self):
+        result = self.mapper.parse_input(b'\x1b[201~')
+        assert result == [('PasteEnd', b'\x1b[201~')]
+
+    def test_paste_with_content(self):
+        result = self.mapper.parse_input(b'\x1b[200~hello\x1b[201~')
+        assert result[0] == ('PasteStart', b'\x1b[200~')
+        assert result[-1] == ('PasteEnd', b'\x1b[201~')
+
+
+class TestApplicationKeypad:
+    """Test application keypad mode sequences."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_keypad_numbers(self):
+        assert self.mapper.parse_input(b'\x1bOp') == [('KP0', b'\x1bOp')]
+        assert self.mapper.parse_input(b'\x1bOq') == [('KP1', b'\x1bOq')]
+        assert self.mapper.parse_input(b'\x1bOy') == [('KP9', b'\x1bOy')]
+
+    def test_keypad_operators(self):
+        assert self.mapper.parse_input(b'\x1bOk') == [('KP+', b'\x1bOk')]
+        assert self.mapper.parse_input(b'\x1bOm') == [('KP-', b'\x1bOm')]
+        assert self.mapper.parse_input(b'\x1bOj') == [('KP*', b'\x1bOj')]
+        assert self.mapper.parse_input(b'\x1bOo') == [('KP/', b'\x1bOo')]
+
+    def test_keypad_enter(self):
+        result = self.mapper.parse_input(b'\x1bOM')
+        assert result == [('KPEnter', b'\x1bOM')]
+
+
+class TestFocusEvents:
+    """Test focus event sequences."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_focus_in(self):
+        result = self.mapper.parse_input(b'\x1b[I')
+        assert result == [('FocusIn', b'\x1b[I')]
+
+    def test_focus_out(self):
+        result = self.mapper.parse_input(b'\x1b[O')
+        assert result == [('FocusOut', b'\x1b[O')]
+
+
+class TestNavigationWithModifiers:
+    """Test navigation keys with modifiers."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_ctrl_page_up(self):
+        result = self.mapper.parse_input(b'\x1b[5;5~')
+        assert result == [('C-PPage', b'\x1b[5;5~')]
+
+    def test_ctrl_home(self):
+        result = self.mapper.parse_input(b'\x1b[1;5H')
+        assert result == [('C-Home', b'\x1b[1;5H')]
+
+    def test_shift_end(self):
+        result = self.mapper.parse_input(b'\x1b[1;2F')
+        assert result == [('S-End', b'\x1b[1;2F')]
+
+
+class TestCtrlAltArrows:
+    """Test Ctrl+Alt arrow key mapping."""
+
+    def setup_method(self):
+        self.mapper = KeyMapper()
+
+    def test_ctrl_alt_arrows(self):
+        assert self.mapper.parse_input(b'\x1b[1;7A') == [('C-M-Up', b'\x1b[1;7A')]
+        assert self.mapper.parse_input(b'\x1b[1;7B') == [('C-M-Down', b'\x1b[1;7B')]
+        assert self.mapper.parse_input(b'\x1b[1;7C') == [('C-M-Right', b'\x1b[1;7C')]
+        assert self.mapper.parse_input(b'\x1b[1;7D') == [('C-M-Left', b'\x1b[1;7D')]
+
+
+class TestResponseFiltering:
+    """Test KeyMapper with response filtering enabled."""
+
+    def test_filter_responses_disabled_by_default(self):
+        mapper = KeyMapper()
+        # CPR should not be filtered by default
+        result = mapper.parse_input(b'\x1b[24;80R')
+        # Without filtering, this gets parsed as M-[ and then individual chars
+        assert len(result) > 0
+
+    def test_filter_responses_enabled(self):
+        mapper = KeyMapper(filter_responses=True)
+        # CPR should be filtered
+        result = mapper.parse_input(b'\x1b[24;80R')
+        assert result == []
+
+    def test_filter_keeps_user_input(self):
+        mapper = KeyMapper(filter_responses=True)
+        # Mix of CPR and user input
+        result = mapper.parse_input(b'hello\x1b[24;80Rworld')
+        key_names = [r[0] for r in result]
+        assert 'h' in key_names
+        assert 'e' in key_names
+        assert 'l' in key_names
+        assert 'o' in key_names
+        assert 'w' in key_names
+        assert 'r' in key_names
+        assert 'd' in key_names
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
