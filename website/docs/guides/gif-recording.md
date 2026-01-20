@@ -387,6 +387,36 @@ Decorations are applied in this order:
 
 This means rounded corners apply to both the terminal content and the window bar, creating a cohesive look.
 
+### Reusing Decorations with @source
+
+Use `@source` to share decoration settings across multiple recordings:
+
+```bash
+# themes/dracula.keys
+@set:window_bar:colorful
+@set:bar_color:282a36
+@set:border_radius:8
+@set:padding:10
+@set:padding_color:282a36
+@set:margin:20
+@set:margin_color:1a1a2e
+```
+
+```bash
+# demos/my-demo.keys
+@source:../themes/dracula.keys
+
+@set:cols:80
+@set:rows:24
+@set:gif_delay:150
+
+@record:start
+# ... your recording with consistent styling
+@record:stop:my-demo.gif
+```
+
+This keeps your recordings visually consistent and makes it easy to update the theme across all demos.
+
 ## Loop Animations with @repeat
 
 The `@repeat:N` and `@end` directives create loops for repetitive frame sequences. This is useful for animations that cycle through states.

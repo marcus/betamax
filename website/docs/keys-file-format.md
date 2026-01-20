@@ -92,6 +92,71 @@ The `@require:CMD` directive checks that a command exists in PATH before running
 
 If the required command is not found, Betamax exits immediately with an error.
 
+## Modular Keys Files with @source
+
+The `@source:PATH` directive imports keys from another file, enabling reusable setup sequences and modular organization.
+
+```bash
+# main.keys
+@source:common/setup.keys      # Import shared setup
+@source:themes/dracula.keys    # Import decoration settings
+
+@record:start
+# ... your recording ...
+@record:stop:demo.gif
+```
+
+### Path Resolution
+
+Paths are resolved relative to the current file's directory:
+
+```
+project/
+├── demos/
+│   └── main.keys          # @source:../common/setup.keys
+├── common/
+│   └── setup.keys         # Resolves correctly
+```
+
+### Features
+
+- **Relative paths**: Resolve from the sourcing file's directory
+- **Nested imports**: Sourced files can themselves use `@source`
+- **Circular detection**: Betamax detects and reports circular imports with the full import chain
+- **Depth limit**: Maximum 10 levels of nesting to prevent runaway imports
+- **Settings preservation**: `@set` directives from sourced files are applied
+
+### Example: Shared Setup
+
+```bash
+# common/terminal-setup.keys
+@set:cols:80
+@set:rows:24
+@set:delay:80
+@require:termshot
+@require:ffmpeg
+```
+
+```bash
+# demos/vim-demo.keys
+@source:../common/terminal-setup.keys
+@set:gif_delay:150
+
+@sleep:400
+@record:start
+i
+@frame
+# ... rest of recording
+```
+
+### Error Handling
+
+Betamax provides clear error messages for common issues:
+
+- **File not found**: Shows the full path that couldn't be found
+- **Circular import**: Shows the complete import chain (A → B → C → A)
+- **Typo detection**: Suggests `@source` if you use `@import`, `@include`, etc.
+
 ## Actions
 
 Actions control the flow of execution, timing, and output capture.
