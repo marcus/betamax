@@ -35,6 +35,9 @@ main() {
   # Load keys from file if specified (with line tracking for validation)
   load_keys_file_with_lines
 
+  # Process @source directives (import from other files)
+  process_source_directives
+
   # Validate keys file before processing
   validate_keys_file
 

@@ -89,6 +89,9 @@ validate_keys_file() {
       @require:*|@require)
         validate_require_directive "$key" "$i" || ((errors++))
         ;;
+      @source:*|@source)
+        validate_source_directive "$key" "$i" || ((errors++))
+        ;;
       @pause|@frame)
         # Valid standalone directives, no validation needed
         ;;
@@ -427,6 +430,52 @@ validate_require_directive() {
   return 0
 }
 
+# Validate @source directive
+validate_source_directive() {
+  local directive="$1"
+  local idx="$2"
+
+  if [[ "$directive" == "@source" ]]; then
+    validation_error "Missing file path for @source" "$idx"
+    return 1
+  fi
+
+  local path="${directive#@source:}"
+
+  if [[ -z "$path" ]]; then
+    validation_error "Missing file path for @source" "$idx"
+    return 1
+  fi
+
+  # Check for null bytes (security)
+  if [[ "$path" == *$'\x00'* ]]; then
+    validation_error "@source path contains null bytes" "$idx"
+    return 1
+  fi
+
+  # Resolve relative to keys file directory
+  local full_path
+  if [[ "$path" != /* ]]; then
+    local keys_dir="$(dirname "$KEYS_FILE")"
+    full_path="$keys_dir/$path"
+  else
+    full_path="$path"
+  fi
+
+  # Check file exists (warning only - might be created later)
+  if [[ ! -f "$full_path" ]]; then
+    validation_warning "@source file not found: $path" "$idx"
+    # Not an error - file might be generated
+  fi
+
+  # Check for .keys extension
+  if [[ "$path" != *.keys ]]; then
+    validation_warning "@source file should have .keys extension" "$idx"
+  fi
+
+  return 0
+}
+
 # Warn on unknown @ directives
 validate_unknown_directive() {
   local directive="$1"
@@ -434,7 +483,7 @@ validate_unknown_directive() {
   local prefix="${directive%%:*}"
 
   # Known directive prefixes
-  local known="@set @require @sleep @wait @pause @capture @record @repeat @end @frame"
+  local known="@set @require @sleep @wait @pause @capture @record @repeat @end @frame @source"
 
   # Simple typo detection
   local suggestion=""
@@ -465,6 +514,9 @@ validate_unknown_directive() {
       ;;
     @puase|@paus)
       suggestion="@pause"
+      ;;
+    @souce|@soruce|@src|@import|@include)
+      suggestion="@source"
       ;;
   esac
 

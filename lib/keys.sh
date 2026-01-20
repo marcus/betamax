@@ -4,6 +4,117 @@
 # Note: load_keys_file_with_lines() in validate.sh now handles file loading
 # with line tracking for validation error messages.
 
+# Track visited files for circular import detection
+declare -a SOURCE_VISITED_FILES=()
+declare -i SOURCE_DEPTH=0
+declare -i SOURCE_MAX_DEPTH=10
+
+# Process @source directives to import keys from other files
+# Must be called after loading keys file but before other processing
+process_source_directives() {
+  local current_file="${1:-$KEYS_FILE}"
+  local PROCESSED_KEYS=()
+
+  # Get directory of current file for relative path resolution
+  local current_dir
+  local current_file_abs=""
+  if [[ -n "$current_file" ]]; then
+    current_dir="$(cd "$(dirname "$current_file")" && pwd)"
+    current_file_abs="$current_dir/$(basename "$current_file")"
+
+    # Track current file to detect circular imports
+    # Only add if not already tracked (for recursive calls)
+    local already_tracked=false
+    for f in "${SOURCE_VISITED_FILES[@]}"; do
+      if [[ "$f" == "$current_file_abs" ]]; then
+        already_tracked=true
+        break
+      fi
+    done
+    if [[ "$already_tracked" == false ]]; then
+      SOURCE_VISITED_FILES+=("$current_file_abs")
+    fi
+  else
+    current_dir="$(pwd)"
+  fi
+
+  for key in "${KEYS[@]}"; do
+    if [[ "$key" == @source:* ]]; then
+      local source_path="${key#@source:}"
+
+      # Resolve relative to current file
+      if [[ "$source_path" != /* ]]; then
+        source_path="$current_dir/$source_path"
+      fi
+      source_path="$(cd "$(dirname "$source_path")" 2>/dev/null && pwd)/$(basename "$source_path")"
+
+      # Check depth limit
+      if [[ $SOURCE_DEPTH -ge $SOURCE_MAX_DEPTH ]]; then
+        echo "Error: @source depth limit exceeded ($SOURCE_MAX_DEPTH levels)" >&2
+        echo "  Circular import? Check: $source_path" >&2
+        exit 1
+      fi
+
+      # Check for circular import
+      local file
+      for file in "${SOURCE_VISITED_FILES[@]}"; do
+        if [[ "$file" == "$source_path" ]]; then
+          echo "Error: Circular @source detected" >&2
+          echo "  File: $source_path" >&2
+          echo "  Import chain:" >&2
+          for visited in "${SOURCE_VISITED_FILES[@]}"; do
+            echo "    -> $visited" >&2
+          done
+          echo "    -> $source_path (circular)" >&2
+          exit 1
+        fi
+      done
+
+      # Check file exists
+      if [[ ! -f "$source_path" ]]; then
+        echo "Error: @source file not found: $source_path" >&2
+        echo "  Referenced from: $current_file" >&2
+        exit 1
+      fi
+
+      # Track this file
+      SOURCE_VISITED_FILES+=("$source_path")
+      ((SOURCE_DEPTH++))
+
+      # Load the sourced file
+      local SOURCED_KEYS=()
+      while IFS= read -r line || [[ -n "$line" ]]; do
+        # Strip inline comments
+        line="${line%%#*}"
+        # Trim whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+        # Skip empty lines
+        [[ -z "$line" ]] && continue
+        SOURCED_KEYS+=("$line")
+      done < "$source_path"
+
+      # Recursively process @source in the sourced file
+      local OLD_KEYS=("${KEYS[@]}")
+      KEYS=("${SOURCED_KEYS[@]}")
+      process_source_directives "$source_path"
+      SOURCED_KEYS=("${KEYS[@]}")
+      KEYS=("${OLD_KEYS[@]}")
+
+      # Add sourced keys to output
+      for sourced_key in "${SOURCED_KEYS[@]}"; do
+        PROCESSED_KEYS+=("$sourced_key")
+      done
+
+      ((SOURCE_DEPTH--))
+    else
+      PROCESSED_KEYS+=("$key")
+    fi
+  done
+
+  KEYS=("${PROCESSED_KEYS[@]}")
+}
+
 expand_loops() {
   local EXPANDED_KEYS=()
   local in_loop=false
