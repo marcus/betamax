@@ -22,6 +22,7 @@ ln -s ~/code/betamax/betamax /usr/local/bin/betamax
 ### Dependencies
 
 - `tmux` - required for headless terminal sessions
+- `bc` - required for timing calculations (pre-installed on most systems)
 - `python3` - required for interactive recording (`betamax record`)
 - `termshot` - for PNG output (`brew install homeport/tap/termshot`)
 - `aha` - for HTML output (`brew install aha`)

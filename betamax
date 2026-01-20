@@ -28,6 +28,13 @@ source "$SCRIPT_DIR/lib/capture.sh"
 source "$SCRIPT_DIR/lib/session.sh"
 source "$SCRIPT_DIR/lib/runner.sh"
 
+# Check for bc (required for timing calculations)
+if ! command -v bc &>/dev/null; then
+  echo "Error: bc is required for betamax timing calculations" >&2
+  echo "Install with: brew install bc (macOS) or apt install bc (Linux)" >&2
+  exit 1
+fi
+
 main() {
   # Parse command line arguments
   parse_args "$@"
