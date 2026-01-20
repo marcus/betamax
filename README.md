@@ -164,7 +164,18 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@set:timeout:SEC` | Wait timeout (overridden by `-t`) |
 | `@set:shell:PATH` | Shell for consistent environment (overridden by `--shell`) |
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) |
+| `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) |
+| `@set:loop_offset:MS` | Duplicate first N ms of frames at end for seamless looping |
+| `@set:window_bar:STYLE` | macOS-style window bar: `colorful`, `colorful_right`, `rings`, `none` |
+| `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits) |
+| `@set:bar_height:N` | Window bar height in pixels (default: 30) |
+| `@set:border_radius:N` | Rounded corner radius in pixels |
+| `@set:margin:N` | Outer margin in pixels |
+| `@set:margin_color:RRGGBB` | Margin background color |
+| `@set:padding:N` | Inner padding in pixels |
+| `@set:padding_color:RRGGBB` | Padding background color |
 | `@require:CMD` | Fail fast if CMD not in PATH |
+| `@source:FILE` | Import keys from another file (supports relative paths) |
 
 ### Actions
 
@@ -181,6 +192,10 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@capture:NAME` | Save all available formats |
 | `@pause` | Wait for Enter (interactive debugging) |
 | `@record:start` | Start GIF recording |
+| `@record:pause` | Pause frame capture (auto-captures on resume) |
+| `@record:resume` | Resume frame capture |
+| `@hide` | Hide recording (keys execute but no frames captured) |
+| `@show` | Resume capturing frames (no auto-capture) |
 | `@record:stop:NAME.gif` | Stop recording and save GIF |
 | `@frame` | Capture a frame (during recording) |
 | `@repeat:N` | Begin a loop that repeats N times |
@@ -313,6 +328,75 @@ Enter
 - Use `@sleep:MS:capture` to add pauses that also capture frames
 - Frames are only captured at explicit `@frame` or `@sleep:MS:capture` points
 - For apps that quit (like vim), frames after exit are gracefully skipped
+
+### GIF Decorations
+
+Add polished visual elements to your GIFs:
+
+```bash
+@set:window_bar:colorful    # macOS-style traffic lights
+@set:bar_color:282a36       # Bar background color
+@set:bar_height:24          # Bar height in pixels
+@set:border_radius:8        # Rounded corners
+@set:margin:20              # Outer spacing
+@set:margin_color:1a1a2e    # Margin color
+@set:padding:10             # Inner spacing
+@set:padding_color:282a36   # Padding color
+```
+
+Window bar styles: `colorful`, `colorful_right`, `rings`, `none`
+
+Decorations require either Pillow (`pip install Pillow`) or ImageMagick.
+
+### Seamless Looping
+
+Use `@set:loop_offset:MS` to duplicate initial frames at the end for smooth loops:
+
+```bash
+@set:gif_delay:150
+@set:loop_offset:500    # Duplicate first 500ms of frames at end
+```
+
+### Playback Speed
+
+Control animation speed with `@set:speed:N` (0.25 to 4.0):
+
+```bash
+@set:speed:2.0    # 2x faster playback
+```
+
+### Hide/Show for Seamless Edits
+
+Use `@hide`/`@show` to execute keys without capturing frames (no visual jump):
+
+```bash
+@record:start
+@hide
+cd ~/project && npm install    # Hidden setup
+@show
+npm run demo                    # Visible part
+@frame
+@record:stop:demo.gif
+```
+
+Unlike `@record:pause`/`@record:resume`, `@show` does not auto-capture a frame.
+
+### Modular Keys Files
+
+Use `@source` to import keys from other files for reusable setup sequences:
+
+```bash
+# main.keys
+@source:common/setup.keys      # Import shared setup
+@record:start
+# ... your recording ...
+@record:stop:demo.gif
+```
+
+Features:
+- Relative paths resolve from the current file's directory
+- Circular import detection with helpful error messages
+- Maximum depth of 10 nested imports
 
 ## Design Philosophy
 
