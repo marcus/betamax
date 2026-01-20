@@ -442,6 +442,39 @@ class TestUserKeystrokeCount:
         generator = KeysGenerator(keystrokes)
         assert generator.count_user_keystrokes() == 1
 
+    def test_filters_osc_with_parameters(self):
+        """OSC sequences with parameters are fully filtered."""
+        # Simulates terminal response: ESC]11;rgb:0000/0000/0000ESC\
+        keystrokes = [
+            (0.0, 'M-]', b'\x1b]'),       # OSC start
+            (0.001, '1', b'1'),           # Parameter
+            (0.001, '1', b'1'),           # Parameter
+            (0.001, ';', b';'),           # Parameter
+            (0.001, 'r', b'r'),           # Parameter
+            (0.001, 'g', b'g'),           # Parameter
+            (0.001, 'b', b'b'),           # Parameter
+            (0.001, ':', b':'),           # Parameter
+            (0.001, '0', b'0'),           # Parameter
+            (0.001, 'M-\\', b'\x1b\\'),   # ST terminator
+            (1.0, 'x', b'x'),             # User keystroke (>20ms delay)
+        ]
+        generator = KeysGenerator(keystrokes)
+        assert generator.count_user_keystrokes() == 1
+
+    def test_filters_dcs_with_parameters(self):
+        """DCS sequences with parameters are fully filtered."""
+        # Simulates terminal response: ESCP$q1ESC\
+        keystrokes = [
+            (0.0, 'M-P', b'\x1bP'),       # DCS start
+            (0.001, '$', b'$'),           # Parameter
+            (0.001, 'q', b'q'),           # Parameter
+            (0.001, '1', b'1'),           # Parameter
+            (0.001, 'M-\\', b'\x1b\\'),   # ST terminator
+            (1.0, 'x', b'x'),             # User keystroke (>20ms delay)
+        ]
+        generator = KeysGenerator(keystrokes)
+        assert generator.count_user_keystrokes() == 1
+
     def test_empty_keystrokes(self):
         """Empty list returns 0."""
         generator = KeysGenerator([])

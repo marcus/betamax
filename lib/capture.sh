@@ -213,62 +213,63 @@ recording_stop_with_decorations() {
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local python_dir="$script_dir/python"
 
-  # Build options JSON for Python pipeline
-  local opts_json='{'
-  opts_json+='"gif_delay":'${GIF_FRAME_DELAY_MS:-200}','
-  opts_json+='"speed":'${GIF_PLAYBACK_SPEED:-1.0}
-
-  if [[ -n "$GIF_WINDOW_BAR" && "$GIF_WINDOW_BAR" != "none" ]]; then
-    opts_json+=',"window_bar":"'$GIF_WINDOW_BAR'"'
-  fi
-  if [[ -n "$GIF_BAR_COLOR" ]]; then
-    opts_json+=',"bar_color":"'$GIF_BAR_COLOR'"'
-  fi
-  if [[ -n "$GIF_BORDER_RADIUS" && "$GIF_BORDER_RADIUS" -gt 0 ]] 2>/dev/null; then
-    opts_json+=',"border_radius":'$GIF_BORDER_RADIUS
-  fi
-  if [[ -n "$GIF_MARGIN" && "$GIF_MARGIN" -gt 0 ]] 2>/dev/null; then
-    opts_json+=',"margin":'$GIF_MARGIN
-  fi
-  if [[ -n "$GIF_MARGIN_COLOR" ]]; then
-    opts_json+=',"margin_color":"'$GIF_MARGIN_COLOR'"'
-  fi
-  if [[ -n "$GIF_PADDING" && "$GIF_PADDING" -gt 0 ]] 2>/dev/null; then
-    opts_json+=',"padding":'$GIF_PADDING
-  fi
-  if [[ -n "$GIF_PADDING_COLOR" ]]; then
-    opts_json+=',"padding_color":"'$GIF_PADDING_COLOR'"'
-  fi
-
-  opts_json+='}'
+  # Build options JSON safely using environment variables
+  # Pass values via env vars instead of shell interpolation to prevent injection
+  export BETAMAX_GIF_DELAY="${GIF_FRAME_DELAY_MS:-200}"
+  export BETAMAX_SPEED="${GIF_PLAYBACK_SPEED:-1.0}"
+  export BETAMAX_WINDOW_BAR="${GIF_WINDOW_BAR:-}"
+  export BETAMAX_BAR_COLOR="${GIF_BAR_COLOR:-}"
+  export BETAMAX_BORDER_RADIUS="${GIF_BORDER_RADIUS:-0}"
+  export BETAMAX_MARGIN="${GIF_MARGIN:-0}"
+  export BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-}"
+  export BETAMAX_PADDING="${GIF_PADDING:-0}"
+  export BETAMAX_PADDING_COLOR="${GIF_PADDING_COLOR:-}"
+  export BETAMAX_RECORDING_DIR="$RECORDING_DIR"
+  export BETAMAX_OUTPUT_DIR="$OUTPUT_DIR"
+  export BETAMAX_OUTPUT_FILE="$output_file"
 
   # Run Python pipeline to build and execute FFmpeg command
+  # All values passed via environment variables for security
   PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
 import sys
 import os
 import subprocess
-import json
 
-# Add lib/python to path
-sys.path.insert(0, '$python_dir')
+sys.path.insert(0, os.environ.get('PYTHONPATH', '').split(':')[0])
 
 from ffmpeg_pipeline import DecorationPipeline, DecorationOptions
 
-opts_dict = json.loads('$opts_json')
+# Read options from environment variables (safe from shell injection)
+def get_env_int(name, default):
+    val = os.environ.get(name, '')
+    return int(val) if val and val.isdigit() else default
+
+def get_env_float(name, default):
+    val = os.environ.get(name, '')
+    try:
+        return float(val) if val else default
+    except ValueError:
+        return default
+
+window_bar = os.environ.get('BETAMAX_WINDOW_BAR', '')
 options = DecorationOptions(
-    window_bar_style=opts_dict.get('window_bar'),
-    bar_color=opts_dict.get('bar_color', '#1e1e1e'),
-    border_radius=opts_dict.get('border_radius', 0),
-    margin=opts_dict.get('margin', 0),
-    margin_color=opts_dict.get('margin_color', '#000000'),
-    padding=opts_dict.get('padding', 0),
-    padding_color=opts_dict.get('padding_color', '#1e1e1e'),
-    speed=opts_dict.get('speed', 1.0),
-    frame_delay_ms=opts_dict.get('gif_delay', 200),
+    window_bar_style=window_bar if window_bar and window_bar != 'none' else None,
+    bar_color=os.environ.get('BETAMAX_BAR_COLOR', '') or '#1e1e1e',
+    border_radius=get_env_int('BETAMAX_BORDER_RADIUS', 0),
+    margin=get_env_int('BETAMAX_MARGIN', 0),
+    margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',
+    padding=get_env_int('BETAMAX_PADDING', 0),
+    padding_color=os.environ.get('BETAMAX_PADDING_COLOR', '') or '#1e1e1e',
+    speed=get_env_float('BETAMAX_SPEED', 1.0),
+    frame_delay_ms=get_env_int('BETAMAX_GIF_DELAY', 200),
 )
 
+recording_dir = os.environ['BETAMAX_RECORDING_DIR']
+output_dir = os.environ['BETAMAX_OUTPUT_DIR']
+output_file = os.environ['BETAMAX_OUTPUT_FILE']
+
 # Get frame dimensions from first frame
-first_frame = '$RECORDING_DIR/frame_00000.png'
+first_frame = os.path.join(recording_dir, 'frame_00000.png')
 result = subprocess.run(
     ['ffprobe', '-v', 'error', '-select_streams', 'v:0',
      '-show_entries', 'stream=width,height', '-of', 'csv=p=0', first_frame],
@@ -286,7 +287,7 @@ pipeline = DecorationPipeline(
     frame_width=frame_width,
     frame_height=frame_height,
     options=options,
-    recording_dir='$RECORDING_DIR',
+    recording_dir=recording_dir,
 )
 
 # Calculate effective frame delay with speed
@@ -308,9 +309,11 @@ frames_filter = f'[0:v]settb=1,setpts=N*{effective_delay}/100/TB[frames]'
 full_filter = f'{frames_filter};{filter_complex}'
 
 # Build complete command
-cmd = ['ffmpeg', '-y', '-framerate', '1', '-i', '$RECORDING_DIR/frame_%05d.png']
+frame_pattern = os.path.join(recording_dir, 'frame_%05d.png')
+output_path = os.path.join(output_dir, output_file)
+cmd = ['ffmpeg', '-y', '-framerate', '1', '-i', frame_pattern]
 cmd.extend(input_args)
-cmd.extend(['-filter_complex', full_filter, '-map', f'[{output_stream}]', '-r', str(effective_rate), '$OUTPUT_DIR/$output_file'])
+cmd.extend(['-filter_complex', full_filter, '-map', f'[{output_stream}]', '-r', str(effective_rate), output_path])
 
 # Execute
 result = subprocess.run(cmd, capture_output=True)
@@ -318,6 +321,12 @@ if result.returncode != 0:
     print(f'FFmpeg error: {result.stderr.decode()}', file=sys.stderr)
     sys.exit(1)
 "
+
+  # Clean up environment variables
+  unset BETAMAX_GIF_DELAY BETAMAX_SPEED BETAMAX_WINDOW_BAR BETAMAX_BAR_COLOR
+  unset BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
+  unset BETAMAX_PADDING BETAMAX_PADDING_COLOR BETAMAX_RECORDING_DIR
+  unset BETAMAX_OUTPUT_DIR BETAMAX_OUTPUT_FILE
 
   if [[ -f "$OUTPUT_DIR/$output_file" ]]; then
     echo "Saved: $OUTPUT_DIR/$output_file"

@@ -337,8 +337,8 @@ class KeysGenerator:
                 delay_ms = int((timestamp - prev_time) * 1000)
 
             # Detect terminal response sequences (arrive in rapid bursts)
-            # M-[ starts a CSI sequence which could be a terminal response
-            if key_name == 'M-[':
+            # M-[ starts CSI, M-] starts OSC, M-P starts DCS - all are terminal responses
+            if key_name in ('M-[', 'M-]', 'M-P'):
                 in_terminal_response = True
                 prev_time = timestamp
                 continue
