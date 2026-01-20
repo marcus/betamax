@@ -241,6 +241,31 @@ process_directives() {
         [[ "$color" != \#* ]] && color="#$color"
         GIF_PADDING_COLOR="$color"
         ;;
+      @set:theme:*)
+        local theme_name="${key#@set:theme:}"
+        # Get theme colors from Python
+        local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        local python_dir="$script_dir/python"
+        local theme_output
+        if theme_output=$(PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys
+sys.path.insert(0, '$python_dir')
+from themes import get_theme
+theme = get_theme('$theme_name')
+if theme:
+    print(f'{theme.bar_color}|{theme.padding_color}|{theme.margin_color}')
+else:
+    sys.exit(1)
+" 2>/dev/null); then
+          # Parse theme colors (only apply if not already set)
+          IFS='|' read -r theme_bar theme_padding theme_margin <<< "$theme_output"
+          [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$theme_bar"
+          [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$theme_padding"
+          [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$theme_margin"
+        else
+          echo "Warning: Unknown theme '$theme_name'" >&2
+        fi
+        ;;
       @require:*)
         REQUIRED_CMDS+=("${key#@require:}")
         ;;

@@ -50,6 +50,7 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) | - |
 | `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) | - |
 | `@set:loop_offset:MS` | Duplicate first MS of frames at end for seamless looping | - |
+| `@set:theme:NAME` | Apply a color theme for decorations (see [Theme System](#theme-system)) | - |
 | `@set:window_bar:STYLE` | Add macOS-style window bar: `colorful`, `colorful_right`, `rings`, `none` | - |
 | `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits, no `#` prefix) | - |
 | `@set:bar_height:N` | Window bar height in pixels (default: 30) | - |
@@ -79,6 +80,69 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 @set:margin:20
 @set:margin_color:1a1a2e
 ```
+
+## Theme System
+
+Betamax includes 30+ built-in themes for styling GIF decorations. Themes set colors for the window bar, padding, and margin to match popular terminal color schemes.
+
+### Using Themes
+
+Apply a theme with `@set:theme:NAME`:
+
+```bash
+@set:theme:dracula
+@set:window_bar:colorful
+@set:padding:10
+@set:margin:20
+@record:start
+# ... recording ...
+@record:stop:demo.gif
+```
+
+### Available Themes
+
+**Dark themes:**
+- `dracula` - Dracula color scheme
+- `catppuccin-mocha`, `catppuccin-macchiato`, `catppuccin-frappe` - Catppuccin variants
+- `gruvbox-dark` - Gruvbox dark
+- `nord` - Nord theme
+- `tokyo-night`, `tokyo-night-storm` - Tokyo Night variants
+- `one-dark` - Atom One Dark
+- `monokai` - Monokai
+- `solarized-dark` - Solarized Dark
+- `github-dark`, `github-dark-dimmed` - GitHub Dark variants
+- `ayu-dark`, `ayu-mirage` - Ayu variants
+- `rose-pine`, `rose-pine-moon` - Rose Pine variants
+- `everforest-dark` - Everforest Dark
+- `kanagawa` - Kanagawa
+- `material`, `material-darker` - Material variants
+- `night-owl` - Night Owl
+- `palenight` - Material Palenight
+- `synthwave-84` - Synthwave '84
+- `cyberpunk` - Cyberpunk theme
+
+**Light themes:**
+- `catppuccin-latte` - Catppuccin Latte
+- `gruvbox-light` - Gruvbox Light
+- `solarized-light` - Solarized Light
+- `github-light` - GitHub Light
+- `rose-pine-dawn` - Rose Pine Dawn
+- `everforest-light` - Everforest Light
+
+### Theme Precedence
+
+Themes provide default colors that can be overridden:
+
+```bash
+@set:theme:dracula        # Base colors from Dracula
+@set:bar_color:ff0000     # Override just the bar color
+```
+
+Explicit color settings take precedence over theme values.
+
+### Note on Terminal Colors
+
+Themes style the **decorations** (window bar, padding, margin) around your terminal content. The terminal content itself uses colors from termshot's built-in ANSI palette. For the most visually consistent results, use a terminal theme that complements your decoration theme.
 
 ## Dependency Checking with @require
 

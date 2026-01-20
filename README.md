@@ -167,6 +167,7 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) |
 | `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) |
 | `@set:loop_offset:MS` | Duplicate first N ms of frames at end for seamless looping |
+| `@set:theme:NAME` | Apply color theme: `dracula`, `nord`, `catppuccin-mocha`, `github-dark`, etc. |
 | `@set:window_bar:STYLE` | macOS-style window bar: `colorful`, `colorful_right`, `rings`, `none` |
 | `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits) |
 | `@set:bar_height:N` | Window bar height in pixels (default: 30) |
@@ -335,6 +336,16 @@ Enter
 Add polished visual elements to your GIFs:
 
 ```bash
+@set:theme:dracula          # Use a color theme (30+ available)
+@set:window_bar:colorful    # macOS-style traffic lights
+@set:border_radius:8        # Rounded corners
+@set:margin:20              # Outer spacing
+@set:padding:10             # Inner spacing
+```
+
+Or specify colors manually:
+
+```bash
 @set:window_bar:colorful    # macOS-style traffic lights
 @set:bar_color:282a36       # Bar background color
 @set:bar_height:24          # Bar height in pixels
@@ -344,6 +355,8 @@ Add polished visual elements to your GIFs:
 @set:padding:10             # Inner spacing
 @set:padding_color:282a36   # Padding color
 ```
+
+Available themes: `dracula`, `nord`, `catppuccin-mocha`, `gruvbox-dark`, `tokyo-night`, `one-dark`, `github-dark`, and 20+ more.
 
 Window bar styles: `colorful`, `colorful_right`, `rings`, `none`
 

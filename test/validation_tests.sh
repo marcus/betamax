@@ -162,6 +162,16 @@ test_set_directives() {
   expect_error "@set:loop_offset:0" "must be positive" "@set:loop_offset zero"
   expect_error "@set:loop_offset:-100" "Invalid integer" "@set:loop_offset negative"
   expect_error "@set:loop_offset:abc" "Invalid integer" "@set:loop_offset non-integer"
+
+  # @set:theme tests
+  expect_valid "@set:theme:dracula" "@set:theme dracula"
+  expect_valid "@set:theme:nord" "@set:theme nord"
+  expect_valid "@set:theme:gruvbox-dark" "@set:theme gruvbox-dark"
+  expect_valid "@set:theme:catppuccin-mocha" "@set:theme catppuccin-mocha"
+  expect_valid "@set:theme:tokyo-night" "@set:theme tokyo-night"
+  expect_valid "@set:theme:github-dark" "@set:theme github-dark"
+  expect_error "@set:theme:nonexistent" "Unknown theme" "@set:theme unknown"
+  expect_error "@set:theme:" "Missing value" "@set:theme empty"
 }
 
 # ============================================================
