@@ -201,6 +201,16 @@ process_directives() {
           exit 1
         fi
         ;;
+      @set:loop_offset:*)
+        local offset_val="${key#@set:loop_offset:}"
+        # Validate loop offset is a positive integer
+        if [[ "$offset_val" =~ ^[0-9]+$ ]] && [[ "$offset_val" -gt 0 ]]; then
+          GIF_LOOP_OFFSET="$offset_val"
+        else
+          echo "Error: @set:loop_offset requires a positive integer in milliseconds (got: $offset_val)" >&2
+          exit 1
+        fi
+        ;;
       @set:window_bar:*)
         GIF_WINDOW_BAR="${key#@set:window_bar:}"
         ;;
@@ -208,6 +218,9 @@ process_directives() {
         local color="${key#@set:bar_color:}"
         [[ "$color" != \#* ]] && color="#$color"
         GIF_BAR_COLOR="$color"
+        ;;
+      @set:bar_height:*)
+        GIF_BAR_HEIGHT="${key#@set:bar_height:}"
         ;;
       @set:border_radius:*)
         GIF_BORDER_RADIUS="${key#@set:border_radius:}"

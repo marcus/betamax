@@ -149,6 +149,19 @@ test_set_directives() {
   expect_error "@set:padding:abc" "Invalid integer" "@set:padding non-integer"
   expect_error "@set:margin_color:blue" "Invalid color format" "@set:margin_color non-hex"
   expect_error "@set:padding_color:12345" "Invalid color format" "@set:padding_color invalid hex"
+
+  # bar_height tests
+  expect_valid "@set:bar_height:30" "@set:bar_height valid"
+  expect_valid "@set:bar_height:50" "@set:bar_height custom height"
+  expect_error "@set:bar_height:0" "must be positive" "@set:bar_height zero"
+  expect_error "@set:bar_height:abc" "Invalid integer" "@set:bar_height non-integer"
+
+  # loop_offset tests
+  expect_valid "@set:loop_offset:500" "@set:loop_offset valid"
+  expect_valid "@set:loop_offset:1000" "@set:loop_offset 1 second"
+  expect_error "@set:loop_offset:0" "must be positive" "@set:loop_offset zero"
+  expect_error "@set:loop_offset:-100" "Invalid integer" "@set:loop_offset negative"
+  expect_error "@set:loop_offset:abc" "Invalid integer" "@set:loop_offset non-integer"
 }
 
 # ============================================================
@@ -242,6 +255,8 @@ test_record_directives() {
   expect_valid "@record:pause" "@record:pause valid"
   expect_valid "@record:resume" "@record:resume valid"
   expect_valid "@record:stop:out.gif" "@record:stop:out.gif valid"
+  expect_valid "@hide" "@hide valid"
+  expect_valid "@show" "@show valid"
 
   # Error cases
   expect_error "@record" "Invalid @record format" "@record alone"

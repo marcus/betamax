@@ -313,6 +313,16 @@ class DecorationPipeline:
         """Get list of generated decoration files for cleanup."""
         return self._decoration_files
 
+    def cleanup_decoration_files(self) -> None:
+        """Remove generated decoration files."""
+        for f in self._decoration_files:
+            try:
+                if os.path.exists(f):
+                    os.remove(f)
+            except OSError:
+                pass  # Ignore cleanup errors
+        self._decoration_files = []
+
 
 def build_gif_command(
     frame_pattern: str,

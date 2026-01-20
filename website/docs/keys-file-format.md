@@ -49,13 +49,17 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 | `@set:shell:PATH` | Shell to use for consistent environment | `--shell` |
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) | - |
 | `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) | - |
+| `@set:loop_offset:MS` | Duplicate first MS of frames at end for seamless looping | - |
 | `@set:window_bar:STYLE` | Add macOS-style window bar: `colorful`, `colorful_right`, `rings`, `none` | - |
-| `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits) | - |
+| `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits, no `#` prefix) | - |
+| `@set:bar_height:N` | Window bar height in pixels (default: 30) | - |
 | `@set:border_radius:N` | Rounded corner radius in pixels | - |
 | `@set:margin:N` | Outer margin in pixels | - |
-| `@set:margin_color:RRGGBB` | Margin background color (6 hex digits) | - |
+| `@set:margin_color:RRGGBB` | Margin background color (6 hex digits, no `#` prefix) | - |
 | `@set:padding:N` | Inner padding in pixels | - |
-| `@set:padding_color:RRGGBB` | Padding background color (6 hex digits) | - |
+| `@set:padding_color:RRGGBB` | Padding background color (6 hex digits, no `#` prefix) | - |
+
+**Note:** Color values use 6 hex digits without the `#` prefix because `#` starts comments in keys files.
 
 ### Example Settings Block
 
@@ -104,8 +108,10 @@ Actions control the flow of execution, timing, and output capture.
 | `@capture:NAME.txt` | Save as plain text with ANSI codes |
 | `@capture:NAME` | Save in all available formats |
 | `@record:start` | Start GIF recording session |
-| `@record:pause` | Pause frame capture (session continues) |
-| `@record:resume` | Resume frame capture |
+| `@record:pause` | Pause frame capture (session continues), auto-captures on resume |
+| `@record:resume` | Resume frame capture, capturing current state |
+| `@hide` | Hide recording - keys execute but frames not captured |
+| `@show` | Show recording - resume capturing frames (no auto-capture) |
 | `@frame` | Capture current state as a GIF frame (during recording) |
 | `@record:stop:NAME.gif` | Stop recording and save animated GIF |
 | `@repeat:N` | Begin a loop that repeats N times |

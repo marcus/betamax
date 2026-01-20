@@ -76,6 +76,12 @@ run_keys() {
         local gif_name="${key#@record:stop:}"
         recording_stop "$gif_name"
         ;;
+      @hide)
+        recording_hide
+        ;;
+      @show)
+        recording_show
+        ;;
       @frame)
         # Explicit frame capture
         recording_capture_frame

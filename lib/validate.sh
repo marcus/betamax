@@ -92,7 +92,7 @@ validate_keys_file() {
       @source:*|@source)
         validate_source_directive "$key" "$i" || ((errors++))
         ;;
-      @pause|@frame)
+      @pause|@frame|@hide|@show)
         # Valid standalone directives, no validation needed
         ;;
       @*)
@@ -194,6 +194,29 @@ validate_set_directive() {
         return 1
       fi
       # Allow 0 for these (means disabled)
+      ;;
+    bar_height)
+      # Validate positive integer for bar height
+      if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        validation_error "Invalid integer for bar_height: $value" "$idx"
+        return 1
+      fi
+      if [[ "$value" -le 0 ]]; then
+        validation_error "bar_height must be positive" "$idx"
+        return 1
+      fi
+      ;;
+    loop_offset)
+      # Validate positive integer for loop offset (milliseconds)
+      if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        validation_error "Invalid integer for loop_offset: $value" "$idx"
+        return 1
+      fi
+      # Must be positive (0 means disabled - omit directive instead)
+      if [[ "$value" -le 0 ]]; then
+        validation_error "loop_offset must be positive milliseconds" "$idx"
+        return 1
+      fi
       ;;
     *)
       validation_error "Unknown setting: $key" "$idx"
@@ -483,7 +506,7 @@ validate_unknown_directive() {
   local prefix="${directive%%:*}"
 
   # Known directive prefixes
-  local known="@set @require @sleep @wait @pause @capture @record @repeat @end @frame @source"
+  local known="@set @require @sleep @wait @pause @capture @record @repeat @end @frame @source @hide @show"
 
   # Simple typo detection
   local suggestion=""
@@ -517,6 +540,12 @@ validate_unknown_directive() {
       ;;
     @souce|@soruce|@src|@import|@include)
       suggestion="@source"
+      ;;
+    @hdie|@hdide|@hidden)
+      suggestion="@hide"
+      ;;
+    @shwo|@shw|@visible)
+      suggestion="@show"
       ;;
   esac
 

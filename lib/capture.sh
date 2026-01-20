@@ -86,6 +86,7 @@ recording_start() {
   RECORDING_DIR=$(mktemp -d)
   RECORDING=true
   RECORDING_PAUSED=false
+  RECORDING_HIDDEN=false
   RECORDING_FRAME=0
   RECORDING_COLS=$(tmux_cmd display-message -t "$SESSION" -p '#{pane_width}')
   echo "Recording started"
@@ -118,9 +119,39 @@ recording_resume() {
   echo "Recording resumed"
 }
 
+# Hide recording - keys execute but frames not captured
+# Unlike pause, @show doesn't auto-capture a frame
+recording_hide() {
+  if [[ "$RECORDING" != true ]]; then
+    echo "Warning: Not currently recording"
+    return
+  fi
+  if [[ "$RECORDING_HIDDEN" == true ]]; then
+    echo "Warning: Recording already hidden"
+    return
+  fi
+  RECORDING_HIDDEN=true
+  echo "Recording hidden"
+}
+
+# Show recording - resume capturing frames
+# Unlike resume, doesn't auto-capture a frame
+recording_show() {
+  if [[ "$RECORDING" != true ]]; then
+    echo "Warning: Not currently recording"
+    return
+  fi
+  if [[ "$RECORDING_HIDDEN" != true ]]; then
+    echo "Warning: Recording not hidden"
+    return
+  fi
+  RECORDING_HIDDEN=false
+  echo "Recording shown"
+}
+
 # Capture a single frame (called after each key when recording)
 recording_capture_frame() {
-  if [[ "$RECORDING" != true ]] || [[ "$RECORDING_PAUSED" == true ]]; then
+  if [[ "$RECORDING" != true ]] || [[ "$RECORDING_PAUSED" == true ]] || [[ "$RECORDING_HIDDEN" == true ]]; then
     return
   fi
 
@@ -132,6 +163,44 @@ recording_capture_frame() {
     termshot --raw-read "$txt_file" --columns "$RECORDING_COLS" --filename "$frame_file" 2>/dev/null
     ((RECORDING_FRAME++)) || true
   fi
+}
+
+# Apply loop offset by duplicating initial frames at end
+# This creates seamless looping by duplicating the first N frames
+apply_loop_offset() {
+  local frame_count="$1"
+
+  if [[ -z "$GIF_LOOP_OFFSET" ]] || [[ "$GIF_LOOP_OFFSET" -eq 0 ]]; then
+    return 0
+  fi
+
+  local delay_ms="${GIF_FRAME_DELAY_MS:-200}"
+  local offset_frames=$((GIF_LOOP_OFFSET / delay_ms))
+
+  # Cap at available frames
+  if [[ "$offset_frames" -gt "$frame_count" ]]; then
+    offset_frames=$frame_count
+  fi
+
+  if [[ "$offset_frames" -eq 0 ]]; then
+    return 0
+  fi
+
+  echo "Applying loop offset: duplicating first $offset_frames frames"
+
+  # Copy first N frames to end
+  local src dst
+  for ((i=0; i<offset_frames; i++)); do
+    src=$(printf "$RECORDING_DIR/frame_%05d.png" $i)
+    dst=$(printf "$RECORDING_DIR/frame_%05d.png" $((frame_count + i)))
+    if [[ -f "$src" ]]; then
+      cp "$src" "$dst"
+    fi
+  done
+
+  # Update frame count
+  RECORDING_FRAME=$((frame_count + offset_frames))
+  return $offset_frames
 }
 
 recording_stop() {
@@ -155,6 +224,10 @@ recording_stop() {
   fi
 
   echo "Captured $frame_count frames"
+
+  # Apply loop offset (duplicates initial frames at end)
+  apply_loop_offset "$frame_count"
+  frame_count=$RECORDING_FRAME
 
   # Ensure output directory exists
   mkdir -p "$OUTPUT_DIR"
@@ -219,6 +292,7 @@ recording_stop_with_decorations() {
   export BETAMAX_SPEED="${GIF_PLAYBACK_SPEED:-1.0}"
   export BETAMAX_WINDOW_BAR="${GIF_WINDOW_BAR:-}"
   export BETAMAX_BAR_COLOR="${GIF_BAR_COLOR:-}"
+  export BETAMAX_BAR_HEIGHT="${GIF_BAR_HEIGHT:-30}"
   export BETAMAX_BORDER_RADIUS="${GIF_BORDER_RADIUS:-0}"
   export BETAMAX_MARGIN="${GIF_MARGIN:-0}"
   export BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-}"
@@ -255,6 +329,7 @@ window_bar = os.environ.get('BETAMAX_WINDOW_BAR', '')
 options = DecorationOptions(
     window_bar_style=window_bar if window_bar and window_bar != 'none' else None,
     bar_color=os.environ.get('BETAMAX_BAR_COLOR', '') or '#1e1e1e',
+    bar_height=get_env_int('BETAMAX_BAR_HEIGHT', 30),
     border_radius=get_env_int('BETAMAX_BORDER_RADIUS', 0),
     margin=get_env_int('BETAMAX_MARGIN', 0),
     margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',

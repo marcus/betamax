@@ -101,6 +101,35 @@ Use cases:
 - **Skip sensitive input**: Pause while entering credentials
 - **Multiple segments**: Record intro, pause for uninteresting middle, resume for ending
 
+## Hide and Show with @hide/@show
+
+The `@hide` and `@show` directives control visibility without the automatic frame capture that `@record:resume` provides. Use these when you want to hide setup or boilerplate without a visible "jump" in the recording.
+
+```bash
+@record:start
+
+# Setup (hidden from recording)
+@hide
+cd ~/projects/myapp
+npm install
+@show
+
+# Record the important part
+npm run demo
+@frame
+
+@record:stop:demo.gif
+```
+
+Key differences from `@record:pause`/`@record:resume`:
+
+| Directive | On Resume | Use Case |
+|-----------|-----------|----------|
+| `@record:pause` → `@record:resume` | Auto-captures frame | Skip slow operations, show result |
+| `@hide` → `@show` | No auto-capture | Hide setup/boilerplate seamlessly |
+
+Use `@hide`/`@show` when you want hidden operations to be invisible in the final GIF. Use `@record:pause`/`@record:resume` when you want to show the outcome after skipping.
+
 ## Frame Control with @frame
 
 The `@frame` directive captures the current terminal state as a frame in your GIF. Place it after each key or action you want visible in the animation.
@@ -207,9 +236,46 @@ Valid speed values range from 0.25 (4x slower) to 4.0 (4x faster):
 
 Speed works together with `gif_delay`. A GIF with `@set:gif_delay:200` and `@set:speed:2.0` will play at effectively 100ms per frame.
 
+## Seamless Looping with @set:loop_offset
+
+The `@set:loop_offset:MS` directive creates seamless GIF loops by duplicating the initial frames at the end. This makes the GIF appear to loop smoothly rather than jumping back to frame 1.
+
+```bash
+@set:gif_delay:150
+@set:loop_offset:500    # Duplicate first 500ms of frames at end
+
+@record:start
+# ... your animation ...
+@record:stop:smooth-loop.gif
+```
+
+The number of duplicated frames is calculated as: `loop_offset_ms / gif_delay_ms`. For example, with a 500ms loop offset and 150ms frame delay, approximately 3 frames are duplicated.
+
+Use loop offset when:
+- Creating repeating animations that should feel continuous
+- Recording progress indicators or loading animations
+- Making demos that loop without a visible "reset" moment
+
+Without loop offset, GIFs jump abruptly from the last frame back to the first. With loop offset, the transition is gradual, using familiar frames the viewer has already seen.
+
 ## GIF Decorations
 
 Betamax can add visual decorations to your GIFs, making them look polished and professional. Decorations are applied during GIF generation and don't affect the terminal session.
+
+### Decoration Backend Requirements
+
+Decorations require either **Pillow** (Python) or **ImageMagick** to generate window bars and corner masks:
+
+```bash
+# Option 1: Pillow (recommended - faster, pure Python)
+pip install Pillow
+
+# Option 2: ImageMagick (fallback)
+brew install imagemagick    # macOS
+apt install imagemagick     # Ubuntu/Debian
+```
+
+Betamax automatically uses Pillow if available, falling back to ImageMagick. If neither is installed, decorations are silently skipped.
 
 ### Window Bar
 
@@ -228,11 +294,12 @@ Available styles:
 | `rings` | Hollow circle outlines instead of filled dots |
 | `none` | No window bar (default) |
 
-Customize the bar background color:
+Customize the bar background color and height:
 
 ```bash
 @set:window_bar:colorful
 @set:bar_color:282a36       # Dracula theme background
+@set:bar_height:24          # Shorter bar (default: 30)
 ```
 
 ### Rounded Corners
