@@ -48,6 +48,14 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 | `@set:timeout:SEC` | Timeout for wait operations in seconds | `-t, --timeout` |
 | `@set:shell:PATH` | Shell to use for consistent environment | `--shell` |
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) | - |
+| `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) | - |
+| `@set:window_bar:STYLE` | Add macOS-style window bar: `colorful`, `colorful_right`, `rings`, `none` | - |
+| `@set:bar_color:RRGGBB` | Window bar background color (6 hex digits) | - |
+| `@set:border_radius:N` | Rounded corner radius in pixels | - |
+| `@set:margin:N` | Outer margin in pixels | - |
+| `@set:margin_color:RRGGBB` | Margin background color (6 hex digits) | - |
+| `@set:padding:N` | Inner padding in pixels | - |
+| `@set:padding_color:RRGGBB` | Padding background color (6 hex digits) | - |
 
 ### Example Settings Block
 
@@ -58,6 +66,14 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 @set:output:./screenshots
 @set:shell:/bin/bash
 @set:gif_delay:150
+@set:speed:1.5
+
+# Decoration settings for polished GIFs
+@set:window_bar:colorful
+@set:bar_color:282a36
+@set:border_radius:8
+@set:margin:20
+@set:margin_color:1a1a2e
 ```
 
 ## Dependency Checking with @require
@@ -88,6 +104,8 @@ Actions control the flow of execution, timing, and output capture.
 | `@capture:NAME.txt` | Save as plain text with ANSI codes |
 | `@capture:NAME` | Save in all available formats |
 | `@record:start` | Start GIF recording session |
+| `@record:pause` | Pause frame capture (session continues) |
+| `@record:resume` | Resume frame capture |
 | `@frame` | Capture current state as a GIF frame (during recording) |
 | `@record:stop:NAME.gif` | Stop recording and save animated GIF |
 | `@repeat:N` | Begin a loop that repeats N times |

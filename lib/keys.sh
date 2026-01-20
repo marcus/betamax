@@ -74,6 +74,49 @@ process_directives() {
       @set:gif_delay:*)
         GIF_FRAME_DELAY_MS="${key#@set:gif_delay:}"
         ;;
+      @set:speed:*)
+        local speed_val="${key#@set:speed:}"
+        # Validate speed is a number in range 0.25-4.0
+        if [[ "$speed_val" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+          local valid=$(echo "$speed_val >= 0.25 && $speed_val <= 4.0" | bc -l)
+          if [[ "$valid" == "1" ]]; then
+            GIF_PLAYBACK_SPEED="$speed_val"
+          else
+            echo "Error: @set:speed must be between 0.25 and 4.0 (got: $speed_val)" >&2
+            exit 1
+          fi
+        else
+          echo "Error: @set:speed requires a numeric value (got: $speed_val)" >&2
+          exit 1
+        fi
+        ;;
+      @set:window_bar:*)
+        GIF_WINDOW_BAR="${key#@set:window_bar:}"
+        ;;
+      @set:bar_color:*)
+        local color="${key#@set:bar_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_BAR_COLOR="$color"
+        ;;
+      @set:border_radius:*)
+        GIF_BORDER_RADIUS="${key#@set:border_radius:}"
+        ;;
+      @set:margin:*)
+        GIF_MARGIN="${key#@set:margin:}"
+        ;;
+      @set:margin_color:*)
+        local color="${key#@set:margin_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_MARGIN_COLOR="$color"
+        ;;
+      @set:padding:*)
+        GIF_PADDING="${key#@set:padding:}"
+        ;;
+      @set:padding_color:*)
+        local color="${key#@set:padding_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_PADDING_COLOR="$color"
+        ;;
       @require:*)
         REQUIRED_CMDS+=("${key#@require:}")
         ;;

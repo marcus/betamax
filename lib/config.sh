@@ -34,6 +34,7 @@ RECORDING_DIR=""
 RECORDING_FRAME=0
 RECORDING_COLS=""
 GIF_FRAME_DELAY_MS=200  # Time each frame displays in GIF (default: 200ms)
+GIF_PLAYBACK_SPEED=1.0  # Playback speed multiplier (0.25-4.0, default: 1.0)
 
 # tmux socket name (isolates betamax sessions)
 TMUX_SOCKET="betamax"

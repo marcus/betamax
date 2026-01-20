@@ -153,6 +153,45 @@ validate_set_directive() {
         return 1
       fi
       ;;
+    speed)
+      # Validate speed is a decimal between 0.25 and 4.0
+      if ! [[ "$value" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+        validation_error "Invalid speed value: $value (must be numeric)" "$idx"
+        return 1
+      fi
+      local valid=$(echo "$value >= 0.25 && $value <= 4.0" | bc -l)
+      if [[ "$valid" != "1" ]]; then
+        validation_error "Speed must be between 0.25 and 4.0 (got: $value)" "$idx"
+        return 1
+      fi
+      ;;
+    window_bar)
+      # Valid styles: colorful, colorful_right, rings, none
+      case "$value" in
+        colorful|colorful_right|rings|none)
+          ;;
+        *)
+          validation_error "Invalid window_bar style: $value (valid: colorful, colorful_right, rings, none)" "$idx"
+          return 1
+          ;;
+      esac
+      ;;
+    bar_color|margin_color|padding_color)
+      # Validate hex color format (6 hex digits, with or without # prefix)
+      # Note: # starts a comment in .keys files, so prefer without #
+      if ! [[ "$value" =~ ^#?[0-9a-fA-F]{6}$ ]]; then
+        validation_error "Invalid color format for $key: $value (expected RRGGBB or #RRGGBB)" "$idx"
+        return 1
+      fi
+      ;;
+    border_radius|margin|padding)
+      # Validate positive integer
+      if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        validation_error "Invalid integer for $key: $value" "$idx"
+        return 1
+      fi
+      # Allow 0 for these (means disabled)
+      ;;
     *)
       validation_error "Unknown setting: $key" "$idx"
       return 1
@@ -333,14 +372,14 @@ validate_record_directive() {
   local idx="$2"
 
   if [[ "$directive" == "@record" ]]; then
-    validation_error "Invalid @record format (use @record:start or @record:stop:<file>.gif)" "$idx"
+    validation_error "Invalid @record format (use @record:start, @record:pause, @record:resume, or @record:stop:<file>.gif)" "$idx"
     return 1
   fi
 
   local spec="${directive#@record:}"
 
   case "$spec" in
-    start)
+    start|pause|resume)
       # Valid
       ;;
     stop:*)
@@ -355,7 +394,7 @@ validate_record_directive() {
       fi
       ;;
     *)
-      validation_error "Unknown @record command: $spec (valid: start, stop:<file>.gif)" "$idx"
+      validation_error "Unknown @record command: $spec (valid: start, pause, resume, stop:<file>.gif)" "$idx"
       return 1
       ;;
   esac
