@@ -17,6 +17,10 @@ from .decorations import (
     generate_window_bar,
     generate_corner_mask,
     DEFAULT_BAR_HEIGHT,
+    _validate_hex_color,
+    _validate_dimensions,
+    _validate_border_radius,
+    _validate_output_path,
 )
 
 
@@ -40,6 +44,35 @@ class DecorationOptions:
     # Playback
     speed: float = 1.0
     frame_delay_ms: int = 200
+
+    def __post_init__(self):
+        """Validate all options after initialization."""
+        # Validate colors
+        self.bar_color = _validate_hex_color(self.bar_color)
+        self.margin_color = _validate_hex_color(self.margin_color)
+        self.padding_color = _validate_hex_color(self.padding_color)
+
+        # Validate numeric values
+        if self.bar_height < 0:
+            raise ValueError(f'bar_height cannot be negative: {self.bar_height}')
+        if self.border_radius < 0:
+            raise ValueError(f'border_radius cannot be negative: {self.border_radius}')
+        if self.margin < 0:
+            raise ValueError(f'margin cannot be negative: {self.margin}')
+        if self.padding < 0:
+            raise ValueError(f'padding cannot be negative: {self.padding}')
+
+        # Validate speed
+        if self.speed <= 0:
+            raise ValueError(f'speed must be positive: {self.speed}')
+        if self.speed > 100:
+            raise ValueError(f'speed too high: {self.speed} (max 100)')
+
+        # Validate frame delay
+        if self.frame_delay_ms < 10:
+            raise ValueError(f'frame_delay_ms too low: {self.frame_delay_ms} (min 10)')
+        if self.frame_delay_ms > 10000:
+            raise ValueError(f'frame_delay_ms too high: {self.frame_delay_ms} (max 10000)')
 
 
 @dataclass
@@ -71,10 +104,20 @@ class DecorationPipeline:
         options: DecorationOptions,
         recording_dir: str,
     ):
+        # Validate dimensions
+        _validate_dimensions(frame_width, 'frame_width')
+        _validate_dimensions(frame_height, 'frame_height')
+
+        # Validate recording_dir exists
+        if not recording_dir:
+            raise ValueError('recording_dir cannot be empty')
+        if not os.path.isdir(recording_dir):
+            raise ValueError(f'recording_dir does not exist: {recording_dir}')
+
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.options = options
-        self.recording_dir = recording_dir
+        self.recording_dir = os.path.abspath(recording_dir)
 
         # Track current dimensions (changes as decorations add height/width)
         self.current_width = frame_width
@@ -154,6 +197,13 @@ class DecorationPipeline:
         """
         if self.options.border_radius <= 0:
             return False
+
+        # Validate radius against current dimensions
+        _validate_border_radius(
+            self.options.border_radius,
+            self.current_width,
+            self.current_height
+        )
 
         mask_path = os.path.join(self.recording_dir, 'decoration_mask.png')
 
@@ -309,19 +359,13 @@ def build_gif_command(
     dims = result.stdout.strip().split(',')
     frame_width, frame_height = int(dims[0]), int(dims[1])
 
-    # Build pipeline
+    # Build pipeline (DecorationOptions validates speed in __post_init__)
     pipeline = DecorationPipeline(
         frame_width=frame_width,
         frame_height=frame_height,
         options=options,
         recording_dir=recording_dir,
     )
-
-    # Validate speed to prevent division by zero
-    if options.speed <= 0:
-        raise ValueError(f'Speed must be positive, got {options.speed}')
-    if options.speed > 100:
-        raise ValueError(f'Speed too high: {options.speed} (max 100)')
 
     # Calculate effective frame delay with speed
     delay_cs = max(2, options.frame_delay_ms // 10)

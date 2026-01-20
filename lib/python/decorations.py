@@ -76,6 +76,66 @@ def _validate_dimensions(value: int, name: str, min_val: int = 1, max_val: int =
     return value
 
 
+def _validate_output_path(path: str, recording_dir: str = None) -> str:
+    """
+    Validate output path to prevent path traversal.
+
+    Args:
+        path: Output path to validate
+        recording_dir: If provided, path must be within this directory
+
+    Returns:
+        Normalized absolute path
+
+    Raises:
+        ValueError: If path contains traversal or is outside allowed directory
+    """
+    if not path:
+        raise ValueError('Output path cannot be empty')
+
+    # Normalize path
+    norm_path = os.path.normpath(os.path.abspath(path))
+
+    # Check for null bytes (common injection vector)
+    if '\x00' in path:
+        raise ValueError('Output path contains null bytes')
+
+    # If recording_dir specified, ensure path is within it
+    if recording_dir:
+        norm_dir = os.path.normpath(os.path.abspath(recording_dir))
+        if not norm_path.startswith(norm_dir + os.sep) and norm_path != norm_dir:
+            raise ValueError(f'Output path must be within {recording_dir}')
+
+    return norm_path
+
+
+def _validate_border_radius(radius: int, width: int, height: int) -> int:
+    """
+    Validate border radius against dimensions.
+
+    Args:
+        radius: Border radius in pixels
+        width: Image width
+        height: Image height
+
+    Returns:
+        Validated radius
+
+    Raises:
+        ValueError: If radius is invalid
+    """
+    if not isinstance(radius, int):
+        raise TypeError(f'radius must be int, got {type(radius).__name__}')
+    if radius < 0:
+        raise ValueError(f'radius cannot be negative: {radius}')
+
+    max_radius = min(width, height) // 2
+    if radius > max_radius:
+        raise ValueError(f'radius {radius} exceeds max {max_radius} for {width}x{height}')
+
+    return radius
+
+
 def _check_pillow() -> bool:
     """Check if Pillow is available."""
     try:
@@ -185,9 +245,19 @@ def generate_window_bar_imagemagick(
     cmd.append(output_path)
 
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=30)
-        return result.returncode == 0
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            import sys
+            print(f'ImageMagick error: {result.stderr}', file=sys.stderr)
+            return False
+        return True
+    except FileNotFoundError:
+        import sys
+        print('ImageMagick not found. Install with: brew install imagemagick', file=sys.stderr)
+        return False
     except subprocess.TimeoutExpired:
+        import sys
+        print('ImageMagick timed out generating window bar', file=sys.stderr)
         return False
 
 
@@ -228,6 +298,11 @@ def generate_corner_mask_pillow(
     """Generate rounded corner alpha mask using Pillow."""
     from PIL import Image, ImageDraw
 
+    # Validate inputs
+    _validate_dimensions(width, 'width')
+    _validate_dimensions(height, 'height')
+    _validate_border_radius(radius, width, height)
+
     # Create mask with alpha channel
     mask = Image.new('L', (width, height), 255)
     draw = ImageDraw.Draw(mask)
@@ -260,6 +335,11 @@ def generate_corner_mask_imagemagick(
     radius: int,
 ) -> bool:
     """Generate rounded corner alpha mask using ImageMagick."""
+    # Validate inputs
+    _validate_dimensions(width, 'width')
+    _validate_dimensions(height, 'height')
+    _validate_border_radius(radius, width, height)
+
     cmd = [
         'convert', '-size', f'{width}x{height}',
         'xc:white',
@@ -287,9 +367,19 @@ def generate_corner_mask_imagemagick(
     ]
 
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=30)
-        return result.returncode == 0
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            import sys
+            print(f'ImageMagick error: {result.stderr}', file=sys.stderr)
+            return False
+        return True
+    except FileNotFoundError:
+        import sys
+        print('ImageMagick not found. Install with: brew install imagemagick', file=sys.stderr)
+        return False
     except subprocess.TimeoutExpired:
+        import sys
+        print('ImageMagick timed out generating corner mask', file=sys.stderr)
         return False
 
 
