@@ -153,6 +153,18 @@ validate_set_directive() {
         return 1
       fi
       ;;
+    speed)
+      # Validate speed is a decimal between 0.25 and 4.0
+      if ! [[ "$value" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+        validation_error "Invalid speed value: $value (must be numeric)" "$idx"
+        return 1
+      fi
+      local valid=$(echo "$value >= 0.25 && $value <= 4.0" | bc -l)
+      if [[ "$valid" != "1" ]]; then
+        validation_error "Speed must be between 0.25 and 4.0 (got: $value)" "$idx"
+        return 1
+      fi
+      ;;
     *)
       validation_error "Unknown setting: $key" "$idx"
       return 1

@@ -48,6 +48,7 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 | `@set:timeout:SEC` | Timeout for wait operations in seconds | `-t, --timeout` |
 | `@set:shell:PATH` | Shell to use for consistent environment | `--shell` |
 | `@set:gif_delay:MS` | Frame duration in GIF playback (default: 200ms) | - |
+| `@set:speed:N` | GIF playback speed multiplier, 0.25-4.0 (default: 1.0) | - |
 
 ### Example Settings Block
 
@@ -58,6 +59,7 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 @set:output:./screenshots
 @set:shell:/bin/bash
 @set:gif_delay:150
+@set:speed:1.5
 ```
 
 ## Dependency Checking with @require

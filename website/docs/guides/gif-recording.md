@@ -138,6 +138,36 @@ Lower values create faster, snappier animations. Higher values give viewers more
 - UI navigation: 150-200ms
 - Complex state changes: 300-500ms
 
+## Playback Speed
+
+The `@set:speed:N` directive controls the overall playback speed multiplier. The default is 1.0 (normal speed).
+
+```bash
+@set:speed:2.0    # 2x faster playback
+
+@record:start
+# ... frames ...
+@record:stop:fast.gif
+```
+
+```bash
+@set:speed:0.5    # Half speed (slow motion)
+
+@record:start
+# ... frames ...
+@record:stop:slow.gif
+```
+
+Valid speed values range from 0.25 (4x slower) to 4.0 (4x faster):
+
+- `@set:speed:0.25` - Quarter speed (slow motion)
+- `@set:speed:0.5` - Half speed
+- `@set:speed:1.0` - Normal speed (default)
+- `@set:speed:2.0` - Double speed
+- `@set:speed:4.0` - Maximum speed
+
+Speed works together with `gif_delay`. A GIF with `@set:gif_delay:200` and `@set:speed:2.0` will play at effectively 100ms per frame.
+
 ## Loop Animations with @repeat
 
 The `@repeat:N` and `@end` directives create loops for repetitive frame sequences. This is useful for animations that cycle through states.

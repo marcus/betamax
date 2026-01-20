@@ -106,6 +106,11 @@ test_set_directives() {
   expect_valid "@set:timeout:30" "@set:timeout valid"
   expect_valid "@set:shell:/bin/zsh" "@set:shell valid path"
   expect_valid "@set:gif_delay:50" "@set:gif_delay valid"
+  expect_valid "@set:speed:1.0" "@set:speed default valid"
+  expect_valid "@set:speed:0.25" "@set:speed minimum valid"
+  expect_valid "@set:speed:4.0" "@set:speed maximum valid"
+  expect_valid "@set:speed:2" "@set:speed integer valid"
+  expect_valid "@set:speed:1.5" "@set:speed decimal valid"
 
   # Error cases
   expect_error "@set:cols:" "Missing value" "@set:cols missing value"
@@ -114,6 +119,10 @@ test_set_directives() {
   expect_error "@set:rows:0" "must be positive" "@set:rows zero"
   expect_error "@set:unknown:foo" "Unknown setting" "@set unknown key"
   expect_error "@set:output:" "Missing value" "@set:output empty"
+  expect_error "@set:speed:abc" "Invalid speed value" "@set:speed non-numeric"
+  expect_error "@set:speed:0.1" "between 0.25 and 4.0" "@set:speed too slow"
+  expect_error "@set:speed:5" "between 0.25 and 4.0" "@set:speed too fast"
+  expect_error "@set:speed:-1" "Invalid speed value" "@set:speed negative"
 }
 
 # ============================================================

@@ -74,6 +74,22 @@ process_directives() {
       @set:gif_delay:*)
         GIF_FRAME_DELAY_MS="${key#@set:gif_delay:}"
         ;;
+      @set:speed:*)
+        local speed_val="${key#@set:speed:}"
+        # Validate speed is a number in range 0.25-4.0
+        if [[ "$speed_val" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+          local valid=$(echo "$speed_val >= 0.25 && $speed_val <= 4.0" | bc -l)
+          if [[ "$valid" == "1" ]]; then
+            GIF_PLAYBACK_SPEED="$speed_val"
+          else
+            echo "Error: @set:speed must be between 0.25 and 4.0 (got: $speed_val)" >&2
+            exit 1
+          fi
+        else
+          echo "Error: @set:speed requires a numeric value (got: $speed_val)" >&2
+          exit 1
+        fi
+        ;;
       @require:*)
         REQUIRED_CMDS+=("${key#@require:}")
         ;;
