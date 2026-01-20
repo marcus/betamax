@@ -90,6 +90,33 @@ process_directives() {
           exit 1
         fi
         ;;
+      @set:window_bar:*)
+        GIF_WINDOW_BAR="${key#@set:window_bar:}"
+        ;;
+      @set:bar_color:*)
+        local color="${key#@set:bar_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_BAR_COLOR="$color"
+        ;;
+      @set:border_radius:*)
+        GIF_BORDER_RADIUS="${key#@set:border_radius:}"
+        ;;
+      @set:margin:*)
+        GIF_MARGIN="${key#@set:margin:}"
+        ;;
+      @set:margin_color:*)
+        local color="${key#@set:margin_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_MARGIN_COLOR="$color"
+        ;;
+      @set:padding:*)
+        GIF_PADDING="${key#@set:padding:}"
+        ;;
+      @set:padding_color:*)
+        local color="${key#@set:padding_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_PADDING_COLOR="$color"
+        ;;
       @require:*)
         REQUIRED_CMDS+=("${key#@require:}")
         ;;

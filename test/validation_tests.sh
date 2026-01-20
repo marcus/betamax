@@ -112,6 +112,21 @@ test_set_directives() {
   expect_valid "@set:speed:2" "@set:speed integer valid"
   expect_valid "@set:speed:1.5" "@set:speed decimal valid"
 
+  # Decoration directives - valid cases
+  expect_valid "@set:window_bar:colorful" "@set:window_bar colorful valid"
+  expect_valid "@set:window_bar:colorful_right" "@set:window_bar colorful_right valid"
+  expect_valid "@set:window_bar:rings" "@set:window_bar rings valid"
+  expect_valid "@set:window_bar:none" "@set:window_bar none valid"
+  expect_valid "@set:bar_color:1e1e1e" "@set:bar_color valid hex (no #)"
+  expect_valid "@set:bar_color:FFFFFF" "@set:bar_color uppercase hex valid"
+  expect_valid "@set:border_radius:8" "@set:border_radius valid"
+  expect_valid "@set:border_radius:0" "@set:border_radius zero valid"
+  expect_valid "@set:margin:20" "@set:margin valid"
+  expect_valid "@set:margin:0" "@set:margin zero valid"
+  expect_valid "@set:margin_color:000000" "@set:margin_color valid"
+  expect_valid "@set:padding:10" "@set:padding valid"
+  expect_valid "@set:padding_color:282a36" "@set:padding_color valid"
+
   # Error cases
   expect_error "@set:cols:" "Missing value" "@set:cols missing value"
   expect_error "@set:cols:abc" "Invalid integer" "@set:cols non-integer"
@@ -123,6 +138,17 @@ test_set_directives() {
   expect_error "@set:speed:0.1" "between 0.25 and 4.0" "@set:speed too slow"
   expect_error "@set:speed:5" "between 0.25 and 4.0" "@set:speed too fast"
   expect_error "@set:speed:-1" "Invalid speed value" "@set:speed negative"
+
+  # Decoration directive error cases
+  expect_error "@set:window_bar:invalid" "Invalid window_bar style" "@set:window_bar invalid style"
+  expect_error "@set:bar_color:red" "Invalid color format" "@set:bar_color non-hex"
+  expect_error "@set:bar_color:fff" "Invalid color format" "@set:bar_color short hex"
+  expect_error "@set:bar_color:GGGGGG" "Invalid color format" "@set:bar_color invalid hex"
+  expect_error "@set:border_radius:abc" "Invalid integer" "@set:border_radius non-integer"
+  expect_error "@set:margin:abc" "Invalid integer" "@set:margin non-integer"
+  expect_error "@set:padding:abc" "Invalid integer" "@set:padding non-integer"
+  expect_error "@set:margin_color:blue" "Invalid color format" "@set:margin_color non-hex"
+  expect_error "@set:padding_color:12345" "Invalid color format" "@set:padding_color invalid hex"
 }
 
 # ============================================================
@@ -213,11 +239,13 @@ test_record_directives() {
 
   # Valid cases
   expect_valid "@record:start" "@record:start valid"
+  expect_valid "@record:pause" "@record:pause valid"
+  expect_valid "@record:resume" "@record:resume valid"
   expect_valid "@record:stop:out.gif" "@record:stop:out.gif valid"
 
   # Error cases
   expect_error "@record" "Invalid @record format" "@record alone"
-  expect_error "@record:pause" "Unknown @record command" "@record:pause unknown"
+  expect_error "@record:unknown" "Unknown @record command" "@record:unknown invalid"
   expect_error "@record:stop:" "Missing GIF filename" "@record:stop: empty"
   expect_error "@record:stop:out.mp4" "must end with .gif" "@record:stop wrong ext"
 }

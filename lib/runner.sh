@@ -66,6 +66,12 @@ run_keys() {
         recording_start
         recording_capture_frame  # Capture initial state
         ;;
+      @record:pause)
+        recording_pause
+        ;;
+      @record:resume)
+        recording_resume
+        ;;
       @record:stop:*)
         local gif_name="${key#@record:stop:}"
         recording_stop "$gif_name"

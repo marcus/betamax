@@ -62,6 +62,45 @@ A GIF recording session has three parts:
 
 Frames are only captured at explicit `@frame` directives. Everything between frames is not recorded.
 
+## Pause and Resume Recording
+
+The `@record:pause` and `@record:resume` directives let you temporarily stop and restart frame capture without ending the recording session. This is useful for skipping parts of a session you don't want in the final GIF.
+
+```bash
+@record:start
+
+# Record initial interaction
+j
+@frame
+j
+@frame
+
+# Skip a slow operation
+@record:pause
+@wait:/Build complete/    # Wait but don't capture frames
+@record:resume
+
+# Continue recording
+k
+@frame
+
+@record:stop:demo.gif
+```
+
+When paused:
+- The terminal session continues running normally
+- `@frame` directives are ignored
+- Keys and commands still execute
+
+When resumed:
+- A frame is automatically captured to show the current state
+- Subsequent `@frame` directives capture as normal
+
+Use cases:
+- **Skip slow operations**: Pause during builds or long-running commands
+- **Skip sensitive input**: Pause while entering credentials
+- **Multiple segments**: Record intro, pause for uninteresting middle, resume for ending
+
 ## Frame Control with @frame
 
 The `@frame` directive captures the current terminal state as a frame in your GIF. Place it after each key or action you want visible in the animation.
@@ -167,6 +206,119 @@ Valid speed values range from 0.25 (4x slower) to 4.0 (4x faster):
 - `@set:speed:4.0` - Maximum speed
 
 Speed works together with `gif_delay`. A GIF with `@set:gif_delay:200` and `@set:speed:2.0` will play at effectively 100ms per frame.
+
+## GIF Decorations
+
+Betamax can add visual decorations to your GIFs, making them look polished and professional. Decorations are applied during GIF generation and don't affect the terminal session.
+
+### Window Bar
+
+Add a macOS-style window bar with traffic light buttons:
+
+```bash
+@set:window_bar:colorful    # Red/yellow/green dots on left
+```
+
+Available styles:
+
+| Style | Description |
+|-------|-------------|
+| `colorful` | Traffic light dots (red, yellow, green) on the left |
+| `colorful_right` | Traffic light dots on the right |
+| `rings` | Hollow circle outlines instead of filled dots |
+| `none` | No window bar (default) |
+
+Customize the bar background color:
+
+```bash
+@set:window_bar:colorful
+@set:bar_color:282a36       # Dracula theme background
+```
+
+### Rounded Corners
+
+Add rounded corners to soften the terminal edges:
+
+```bash
+@set:border_radius:8        # 8 pixel corner radius
+```
+
+Rounded corners work well with window bars for a native app look.
+
+### Margin and Padding
+
+Add spacing around your GIF:
+
+```bash
+@set:padding:10             # 10px inner padding (inside rounded corners)
+@set:padding_color:1e1e1e   # Padding background color
+
+@set:margin:20              # 20px outer margin
+@set:margin_color:000000    # Margin background color
+```
+
+**Padding** adds space inside the rounded corners, between the terminal content and the border.
+
+**Margin** adds space outside the entire composition, useful for embedding GIFs on dark or light backgrounds.
+
+### Color Values
+
+Colors are specified as 6 hex digits without the `#` prefix (since `#` starts comments in keys files):
+
+```bash
+@set:bar_color:1e1e1e       # Dark gray
+@set:margin_color:ffffff    # White
+@set:padding_color:282a36   # Dracula purple-gray
+```
+
+### Complete Decoration Example
+
+Here's a fully decorated GIF configuration:
+
+```bash
+# polished-demo.keys
+
+@set:cols:80
+@set:rows:24
+@set:delay:80
+@set:gif_delay:150
+
+# Decorations
+@set:window_bar:colorful
+@set:bar_color:282a36
+@set:border_radius:8
+@set:padding:10
+@set:padding_color:282a36
+@set:margin:20
+@set:margin_color:1a1a2e
+
+@require:termshot
+@require:ffmpeg
+
+@sleep:400
+@record:start
+
+# ... your recording ...
+
+@record:stop:polished-demo.gif
+```
+
+This creates a GIF with:
+- macOS-style window bar with Dracula theme colors
+- 8px rounded corners
+- 10px inner padding matching the bar color
+- 20px outer margin in a darker shade
+
+### Decoration Order
+
+Decorations are applied in this order:
+
+1. **Padding** - Added inside, around the terminal content
+2. **Window bar** - Added at the top
+3. **Rounded corners** - Applied to the composition
+4. **Margin** - Added outside, around everything
+
+This means rounded corners apply to both the terminal content and the window bar, creating a cohesive look.
 
 ## Loop Animations with @repeat
 
