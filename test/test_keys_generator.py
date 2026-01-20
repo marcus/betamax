@@ -512,5 +512,194 @@ class TestUserKeystrokeCount:
         assert 'Enter' in content
 
 
+class TestKeystrokeAggregation:
+    """Tests for keystroke aggregation feature."""
+
+    def test_aggregates_consecutive_arrows(self):
+        """Consecutive arrow keys are aggregated."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.05, 'Down', b'\x1b[B'),  # 50ms - within threshold
+            (0.10, 'Down', b'\x1b[B'),  # 50ms - within threshold
+            (0.15, 'Down', b'\x1b[B'),  # 50ms - within threshold
+            (0.20, 'Down', b'\x1b[B'),  # 50ms - within threshold
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        # Should have "Down 5" instead of 5 separate Downs
+        assert 'Down 5' in content
+
+    def test_aggregation_respects_threshold(self):
+        """Keys with long delays are not aggregated."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.05, 'Down', b'\x1b[B'),   # 50ms - within threshold
+            (0.5, 'Down', b'\x1b[B'),    # 450ms - exceeds threshold (default 200ms)
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'aggregate': True,
+            'aggregate_threshold': 200
+        })
+        content = generator.generate()
+        # First two should be aggregated, third separate
+        assert 'Down 2' in content
+        # Third Down should be separate (with timing due to 450ms delay)
+        # Could be Down@450 or Down with @sleep, depending on delay
+        lines = [l for l in content.split('\n') if l.strip().startswith('Down') and '2' not in l]
+        assert len(lines) >= 1
+
+    def test_aggregation_disabled(self):
+        """Aggregation can be disabled."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.05, 'Down', b'\x1b[B'),
+            (0.10, 'Down', b'\x1b[B'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': False})
+        content = generator.generate()
+        # Should have separate Down entries, no "Down 3"
+        assert 'Down 3' not in content
+        lines = [l.strip() for l in content.split('\n') if l.strip() == 'Down']
+        assert len(lines) == 3
+
+    def test_only_aggregatable_keys(self):
+        """Only certain keys are aggregated (arrows, navigation, etc)."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.05, 'a', b'a'),
+            (0.10, 'a', b'a'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        # 'a' is not in AGGREGATABLE_KEYS, should not be aggregated
+        assert 'a 3' not in content
+        lines = [l.strip() for l in content.split('\n') if l.strip() == 'a']
+        assert len(lines) == 3
+
+    def test_mixed_keys_break_aggregation(self):
+        """Different keys break the aggregation."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.05, 'Down', b'\x1b[B'),
+            (0.10, 'Up', b'\x1b[A'),
+            (0.15, 'Up', b'\x1b[A'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        assert 'Down 2' in content
+        assert 'Up 2' in content
+
+    def test_aggregate_backspace(self):
+        """Backspace is aggregated."""
+        keystrokes = [
+            (0.0, 'BSpace', b'\x7f'),
+            (0.03, 'BSpace', b'\x7f'),
+            (0.06, 'BSpace', b'\x7f'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        assert 'BSpace 3' in content
+
+    def test_aggregate_enter(self):
+        """Enter is aggregated."""
+        keystrokes = [
+            (0.0, 'Enter', b'\r'),
+            (0.05, 'Enter', b'\r'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        assert 'Enter 2' in content
+
+    def test_single_key_no_count(self):
+        """Single key doesn't show count."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.3, 'Up', b'\x1b[A'),  # Long delay breaks aggregation
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'aggregate': True,
+            'aggregate_threshold': 200
+        })
+        content = generator.generate()
+        # Should have "Down" and "Up" without counts
+        assert 'Down 1' not in content
+        assert 'Up 1' not in content
+        lines = [l.strip() for l in content.split('\n') if l.strip() in ('Down', 'Up')]
+        assert len(lines) == 2
+
+    def test_aggregation_with_timing(self):
+        """Aggregated keys preserve timing from first key."""
+        keystrokes = [
+            (0.0, 'a', b'a'),
+            (0.8, 'Down', b'\x1b[B'),   # 800ms delay (should have @sleep)
+            (0.85, 'Down', b'\x1b[B'),
+            (0.90, 'Down', b'\x1b[B'),
+        ]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        # Should have @sleep before the aggregated Down
+        assert '@sleep:800' in content
+        assert 'Down 3' in content
+
+    def test_custom_aggregate_threshold(self):
+        """Custom aggregate threshold works."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.15, 'Down', b'\x1b[B'),  # 150ms
+            (0.30, 'Down', b'\x1b[B'),  # 150ms
+        ]
+        # With 100ms threshold, these should not aggregate
+        generator = KeysGenerator(keystrokes, {
+            'aggregate': True,
+            'aggregate_threshold': 100
+        })
+        content = generator.generate()
+        assert 'Down 3' not in content
+
+        # With 200ms threshold, they should aggregate
+        generator2 = KeysGenerator(keystrokes, {
+            'aggregate': True,
+            'aggregate_threshold': 200
+        })
+        content2 = generator2.generate()
+        assert 'Down 3' in content2
+
+
+class TestAggregationEdgeCases:
+    """Edge cases for aggregation."""
+
+    def test_empty_keystrokes_with_aggregation(self):
+        """Empty keystrokes with aggregation enabled."""
+        generator = KeysGenerator([], {'aggregate': True})
+        content = generator.generate()
+        assert '# Recorded with betamax record' in content
+
+    def test_single_keystroke_with_aggregation(self):
+        """Single keystroke with aggregation enabled."""
+        keystrokes = [(0.0, 'Down', b'\x1b[B')]
+        generator = KeysGenerator(keystrokes, {'aggregate': True})
+        content = generator.generate()
+        assert 'Down' in content
+        assert 'Down 1' not in content
+
+    def test_aggregation_with_frame_markers(self):
+        """Frame markers work with aggregation."""
+        keystrokes = [
+            (0.0, 'Down', b'\x1b[B'),
+            (0.05, 'Down', b'\x1b[B'),
+            (0.1, 'C-g', b'\x07'),  # Frame marker
+            (0.2, 'Up', b'\x1b[A'),
+        ]
+        generator = KeysGenerator(keystrokes, {
+            'aggregate': True,
+            'frame_markers': [2],
+            'frame_key': 'C-g',
+        })
+        content = generator.generate()
+        assert 'Down 2' in content
+        assert '@frame' in content
+        assert 'Up' in content
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
