@@ -59,6 +59,12 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 | `@set:margin_color:RRGGBB` | Margin background color (6 hex digits, no `#` prefix) | - |
 | `@set:padding:N` | Inner padding in pixels | - |
 | `@set:padding_color:RRGGBB` | Padding background color (6 hex digits, no `#` prefix) | - |
+| `@set:shadow:BOOL` | Enable drop shadow (`true` or `false`) | - |
+| `@set:shadow_blur:N` | Shadow blur radius in pixels (0-100, default: 15) | - |
+| `@set:shadow_offset_x:N` | Horizontal shadow offset (-200 to 200, default: 0) | - |
+| `@set:shadow_offset_y:N` | Vertical shadow offset (-200 to 200, default: 8) | - |
+| `@set:shadow_opacity:N` | Shadow opacity 0.0-1.0 (default: 0.4) | - |
+| `@set:shadow_color:RRGGBB` | Shadow color (6 hex digits, default: 000000) | - |
 
 **Note:** Color values use 6 hex digits without the `#` prefix because `#` starts comments in keys files.
 
@@ -79,6 +85,12 @@ Settings at the top of a keys file make it self-describing and reproducible. CLI
 @set:border_radius:8
 @set:margin:20
 @set:margin_color:1a1a2e
+
+# Drop shadow for floating window effect
+@set:shadow:true
+@set:shadow_blur:20
+@set:shadow_offset_y:10
+@set:shadow_opacity:0.5
 ```
 
 ## Theme System
@@ -457,3 +469,32 @@ k
 
 @record:stop:scroll-demo.gif
 ```
+
+### Shadow Example
+
+```bash
+# shadow-demo.keys
+# Creates a polished screenshot with drop shadow
+
+@set:cols:80
+@set:rows:20
+@set:theme:dracula
+@set:window_bar:colorful
+@set:border_radius:10
+@set:padding:8
+
+# Enable drop shadow
+@set:shadow:true
+@set:shadow_blur:20
+@set:shadow_offset_y:10
+@set:shadow_opacity:0.5
+
+@require:termshot
+
+@sleep:300
+echo "Hello from betamax!"
+@sleep:200
+@capture:shadow-demo.png
+```
+
+Shadow works with both PNG screenshots (`@capture:NAME.png`) and animated GIFs (`@record:stop:NAME.gif`). The shadow is rendered with full RGBA transparency.

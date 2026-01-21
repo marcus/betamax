@@ -409,6 +409,270 @@ def generate_corner_mask(
         return False
 
 
+def _validate_shadow_params(
+    blur_radius: int,
+    offset_x: int,
+    offset_y: int,
+    opacity: float,
+    color: str,
+) -> Tuple[int, int, int, float, str]:
+    """Validate shadow parameters."""
+    if not isinstance(blur_radius, int):
+        raise TypeError(f'blur_radius must be int, got {type(blur_radius).__name__}')
+    if blur_radius < 0 or blur_radius > 100:
+        raise ValueError(f'blur_radius must be 0-100, got {blur_radius}')
+
+    if not isinstance(offset_x, int):
+        raise TypeError(f'offset_x must be int, got {type(offset_x).__name__}')
+    if offset_x < -200 or offset_x > 200:
+        raise ValueError(f'offset_x must be -200 to 200, got {offset_x}')
+
+    if not isinstance(offset_y, int):
+        raise TypeError(f'offset_y must be int, got {type(offset_y).__name__}')
+    if offset_y < -200 or offset_y > 200:
+        raise ValueError(f'offset_y must be -200 to 200, got {offset_y}')
+
+    if not isinstance(opacity, (int, float)):
+        raise TypeError(f'opacity must be float, got {type(opacity).__name__}')
+    if opacity < 0.0 or opacity > 1.0:
+        raise ValueError(f'opacity must be 0.0-1.0, got {opacity}')
+
+    color = _validate_hex_color(color)
+    return blur_radius, offset_x, offset_y, float(opacity), color
+
+
+def _calculate_shadow_canvas_size(
+    width: int,
+    height: int,
+    blur_radius: int,
+    offset_x: int,
+    offset_y: int,
+) -> Tuple[int, int, int]:
+    """Calculate shadow canvas dimensions and padding."""
+    padding = blur_radius * 2 + max(abs(offset_x), abs(offset_y))
+    shadow_width = width + padding * 2
+    shadow_height = height + padding * 2
+    return shadow_width, shadow_height, padding
+
+
+def generate_shadow_pillow(
+    width: int,
+    height: int,
+    output_path: str,
+    blur_radius: int = 15,
+    offset_x: int = 0,
+    offset_y: int = 8,
+    opacity: float = 0.4,
+    color: str = '#000000',
+    source_mask_path: Optional[str] = None,
+) -> bool:
+    """
+    Generate drop shadow image using Pillow.
+
+    Creates an RGBA image where the alpha channel contains the blurred shadow.
+
+    Args:
+        width: Width of content to cast shadow
+        height: Height of content to cast shadow
+        output_path: Where to save the shadow PNG
+        blur_radius: Gaussian blur radius in pixels
+        offset_x: Horizontal shadow offset (positive = right)
+        offset_y: Vertical shadow offset (positive = down)
+        opacity: Shadow opacity 0.0-1.0
+        color: Shadow color as hex string
+        source_mask_path: Optional path to alpha mask for shadow shape
+
+    Returns:
+        True on success, False on failure
+    """
+    from PIL import Image, ImageDraw, ImageFilter
+
+    # Validate inputs
+    _validate_dimensions(width, 'width')
+    _validate_dimensions(height, 'height')
+    blur_radius, offset_x, offset_y, opacity, color = _validate_shadow_params(
+        blur_radius, offset_x, offset_y, opacity, color
+    )
+
+    # Calculate canvas size
+    shadow_width, shadow_height, padding = _calculate_shadow_canvas_size(
+        width, height, blur_radius, offset_x, offset_y
+    )
+
+    # Create alpha mask for shadow shape
+    alpha = Image.new('L', (shadow_width, shadow_height), 0)
+
+    # Position of content area in shadow canvas (offset applied)
+    content_x = padding + offset_x
+    content_y = padding + offset_y
+
+    if source_mask_path and os.path.exists(source_mask_path):
+        # Use existing corner mask as shadow shape
+        mask = Image.open(source_mask_path).convert('L')
+        alpha.paste(mask, (content_x, content_y))
+    else:
+        # Draw solid rectangle
+        draw = ImageDraw.Draw(alpha)
+        draw.rectangle(
+            [content_x, content_y, content_x + width - 1, content_y + height - 1],
+            fill=255
+        )
+
+    # Apply gaussian blur
+    if blur_radius > 0:
+        alpha = alpha.filter(ImageFilter.GaussianBlur(blur_radius))
+
+    # Scale alpha by opacity
+    if opacity < 1.0:
+        alpha = alpha.point(lambda p: int(p * opacity))
+
+    # Parse shadow color
+    hex_part = color[1:]
+    if len(hex_part) == 3:
+        hex_part = ''.join(c * 2 for c in hex_part)
+    r = int(hex_part[0:2], 16)
+    g = int(hex_part[2:4], 16)
+    b = int(hex_part[4:6], 16)
+
+    # Create final RGBA image
+    shadow = Image.new('RGBA', (shadow_width, shadow_height), (r, g, b, 0))
+    shadow.putalpha(alpha)
+
+    shadow.save(output_path, 'PNG')
+    return True
+
+
+def generate_shadow_imagemagick(
+    width: int,
+    height: int,
+    output_path: str,
+    blur_radius: int = 15,
+    offset_x: int = 0,
+    offset_y: int = 8,
+    opacity: float = 0.4,
+    color: str = '#000000',
+    source_mask_path: Optional[str] = None,
+) -> bool:
+    """
+    Generate drop shadow image using ImageMagick.
+
+    Args:
+        width: Width of content to cast shadow
+        height: Height of content to cast shadow
+        output_path: Where to save the shadow PNG
+        blur_radius: Gaussian blur radius in pixels
+        offset_x: Horizontal shadow offset (positive = right)
+        offset_y: Vertical shadow offset (positive = down)
+        opacity: Shadow opacity 0.0-1.0
+        color: Shadow color as hex string
+        source_mask_path: Optional path to alpha mask for shadow shape
+
+    Returns:
+        True on success, False on failure
+    """
+    import sys
+
+    # Validate inputs
+    _validate_dimensions(width, 'width')
+    _validate_dimensions(height, 'height')
+    blur_radius, offset_x, offset_y, opacity, color = _validate_shadow_params(
+        blur_radius, offset_x, offset_y, opacity, color
+    )
+
+    # Calculate canvas size
+    shadow_width, shadow_height, padding = _calculate_shadow_canvas_size(
+        width, height, blur_radius, offset_x, offset_y
+    )
+
+    content_x = padding + offset_x
+    content_y = padding + offset_y
+
+    if source_mask_path and os.path.exists(source_mask_path):
+        # Use mask as shadow shape
+        cmd = [
+            'convert',
+            '-size', f'{shadow_width}x{shadow_height}', 'xc:transparent',
+            source_mask_path,
+            '-geometry', f'+{content_x}+{content_y}',
+            '-composite',
+            '-channel', 'A', '-blur', f'0x{blur_radius}',
+            '-channel', 'A', '-evaluate', 'multiply', str(opacity),
+            '+channel',
+            '-fill', color, '-colorize', '100%',
+            output_path
+        ]
+    else:
+        # Draw rectangle shadow
+        cmd = [
+            'convert',
+            '-size', f'{shadow_width}x{shadow_height}', 'xc:transparent',
+            '-fill', 'white',
+            '-draw', f'rectangle {content_x},{content_y} {content_x + width - 1},{content_y + height - 1}',
+            '-channel', 'A', '-blur', f'0x{blur_radius}',
+            '-channel', 'A', '-evaluate', 'multiply', str(opacity),
+            '+channel',
+            '-fill', color, '-colorize', '100%',
+            output_path
+        ]
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            print(f'ImageMagick error: {result.stderr}', file=sys.stderr)
+            return False
+        return True
+    except FileNotFoundError:
+        print('ImageMagick not found. Install with: brew install imagemagick', file=sys.stderr)
+        return False
+    except subprocess.TimeoutExpired:
+        print('ImageMagick timed out generating shadow', file=sys.stderr)
+        return False
+
+
+def generate_shadow(
+    width: int,
+    height: int,
+    output_path: str,
+    blur_radius: int = 15,
+    offset_x: int = 0,
+    offset_y: int = 8,
+    opacity: float = 0.4,
+    color: str = '#000000',
+    source_mask_path: Optional[str] = None,
+) -> bool:
+    """
+    Generate drop shadow PNG for GIF decoration.
+
+    Uses Pillow if available, falls back to ImageMagick.
+
+    Args:
+        width: Width of content to cast shadow
+        height: Height of content to cast shadow
+        output_path: Where to save the shadow PNG
+        blur_radius: Gaussian blur radius in pixels (default 15)
+        offset_x: Horizontal offset, positive = right (default 0)
+        offset_y: Vertical offset, positive = down (default 8)
+        opacity: Shadow opacity 0.0-1.0 (default 0.4)
+        color: Shadow color as hex string (default '#000000')
+        source_mask_path: Optional path to alpha mask for shadow shape
+
+    Returns:
+        True on success, False on failure
+    """
+    if _check_pillow():
+        return generate_shadow_pillow(
+            width, height, output_path, blur_radius,
+            offset_x, offset_y, opacity, color, source_mask_path
+        )
+    elif _check_imagemagick():
+        return generate_shadow_imagemagick(
+            width, height, output_path, blur_radius,
+            offset_x, offset_y, opacity, color, source_mask_path
+        )
+    else:
+        return False
+
+
 def get_available_backend() -> Optional[str]:
     """Return the available image generation backend."""
     if _check_pillow():
@@ -426,6 +690,7 @@ if __name__ == '__main__':
         print('Commands:')
         print('  window_bar <width> <output> [style] [bg_color]')
         print('  corner_mask <width> <height> <output> <radius>')
+        print('  shadow <width> <height> <output> [blur] [offset_x] [offset_y] [opacity] [color] [mask_path]')
         print('  check_backend')
         sys.exit(1)
 
@@ -451,6 +716,22 @@ if __name__ == '__main__':
             print(f'Generated: {output}')
         else:
             print('Error: Failed to generate corner mask', file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == 'shadow':
+        width = int(sys.argv[2])
+        height = int(sys.argv[3])
+        output = sys.argv[4]
+        blur = int(sys.argv[5]) if len(sys.argv) > 5 else 15
+        offset_x = int(sys.argv[6]) if len(sys.argv) > 6 else 0
+        offset_y = int(sys.argv[7]) if len(sys.argv) > 7 else 8
+        opacity = float(sys.argv[8]) if len(sys.argv) > 8 else 0.4
+        color = sys.argv[9] if len(sys.argv) > 9 else '#000000'
+        mask_path = sys.argv[10] if len(sys.argv) > 10 else None
+        if generate_shadow(width, height, output, blur, offset_x, offset_y, opacity, color, mask_path):
+            print(f'Generated: {output}')
+        else:
+            print('Error: Failed to generate shadow', file=sys.stderr)
             sys.exit(1)
 
     elif cmd == 'check_backend':

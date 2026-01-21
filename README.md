@@ -176,6 +176,12 @@ Settings at the top of a keys file make it self-describing and reproducible.
 | `@set:margin_color:RRGGBB` | Margin background color |
 | `@set:padding:N` | Inner padding in pixels |
 | `@set:padding_color:RRGGBB` | Padding background color |
+| `@set:shadow:true/false` | Enable drop shadow effect |
+| `@set:shadow_blur:N` | Shadow blur radius in pixels (default: 15) |
+| `@set:shadow_offset_x:N` | Horizontal shadow offset (default: 0) |
+| `@set:shadow_offset_y:N` | Vertical shadow offset (default: 8) |
+| `@set:shadow_opacity:N` | Shadow opacity 0.0-1.0 (default: 0.4) |
+| `@set:shadow_color:RRGGBB` | Shadow color (default: 000000) |
 | `@require:CMD` | Fail fast if CMD not in PATH |
 | `@source:FILE` | Import keys from another file (supports relative paths) |
 
@@ -354,6 +360,18 @@ Or specify colors manually:
 @set:margin_color:1a1a2e    # Margin color
 @set:padding:10             # Inner spacing
 @set:padding_color:282a36   # Padding color
+```
+
+Add drop shadow for a floating window effect (works with both GIFs and PNGs):
+
+```bash
+@set:theme:dracula
+@set:window_bar:colorful
+@set:border_radius:10
+@set:shadow:true            # Enable drop shadow
+@set:shadow_blur:20         # Blur radius
+@set:shadow_offset_y:10     # Vertical offset
+@set:shadow_opacity:0.5     # Shadow darkness
 ```
 
 Available themes: `dracula`, `nord`, `catppuccin-mocha`, `gruvbox-dark`, `tokyo-night`, `one-dark`, `github-dark`, and 20+ more.

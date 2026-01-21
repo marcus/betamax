@@ -13,15 +13,30 @@ Order matters: bar extends height, then corners apply, then margin wraps.
 import os
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
-from .decorations import (
-    generate_window_bar,
-    generate_corner_mask,
-    DEFAULT_BAR_HEIGHT,
-    _validate_hex_color,
-    _validate_dimensions,
-    _validate_border_radius,
-    _validate_output_path,
-)
+
+# Support both package import (from lib.python.ffmpeg_pipeline) and direct import
+try:
+    from .decorations import (
+        generate_window_bar,
+        generate_corner_mask,
+        generate_shadow,
+        DEFAULT_BAR_HEIGHT,
+        _validate_hex_color,
+        _validate_dimensions,
+        _validate_border_radius,
+        _validate_output_path,
+    )
+except ImportError:
+    from decorations import (
+        generate_window_bar,
+        generate_corner_mask,
+        generate_shadow,
+        DEFAULT_BAR_HEIGHT,
+        _validate_hex_color,
+        _validate_dimensions,
+        _validate_border_radius,
+        _validate_output_path,
+    )
 
 
 @dataclass
@@ -41,6 +56,14 @@ class DecorationOptions:
     padding: int = 0
     padding_color: str = '#1e1e1e'
 
+    # Drop shadow
+    shadow_enabled: bool = False
+    shadow_blur: int = 15
+    shadow_offset_x: int = 0
+    shadow_offset_y: int = 8
+    shadow_opacity: float = 0.4
+    shadow_color: str = '#000000'
+
     # Playback
     speed: float = 1.0
     frame_delay_ms: int = 200
@@ -51,6 +74,7 @@ class DecorationOptions:
         self.bar_color = _validate_hex_color(self.bar_color)
         self.margin_color = _validate_hex_color(self.margin_color)
         self.padding_color = _validate_hex_color(self.padding_color)
+        self.shadow_color = _validate_hex_color(self.shadow_color)
 
         # Validate numeric values
         if self.bar_height < 0:
@@ -61,6 +85,16 @@ class DecorationOptions:
             raise ValueError(f'margin cannot be negative: {self.margin}')
         if self.padding < 0:
             raise ValueError(f'padding cannot be negative: {self.padding}')
+
+        # Validate shadow parameters
+        if self.shadow_blur < 0 or self.shadow_blur > 100:
+            raise ValueError(f'shadow_blur must be 0-100: {self.shadow_blur}')
+        if self.shadow_offset_x < -200 or self.shadow_offset_x > 200:
+            raise ValueError(f'shadow_offset_x must be -200 to 200: {self.shadow_offset_x}')
+        if self.shadow_offset_y < -200 or self.shadow_offset_y > 200:
+            raise ValueError(f'shadow_offset_y must be -200 to 200: {self.shadow_offset_y}')
+        if self.shadow_opacity < 0.0 or self.shadow_opacity > 1.0:
+            raise ValueError(f'shadow_opacity must be 0.0-1.0: {self.shadow_opacity}')
 
         # Validate speed
         if self.speed <= 0:
@@ -261,6 +295,71 @@ class DecorationPipeline:
         self.current_height += m * 2
         return True
 
+    def add_shadow(self) -> bool:
+        """
+        Add drop shadow to the composition.
+
+        Generates shadow image and composites content on top of it.
+        Shadow is applied as the outermost decoration layer.
+
+        Returns:
+            True on success, False if shadow disabled or generation fails
+        """
+        if not self.options.shadow_enabled:
+            return False
+
+        # Calculate shadow canvas size
+        blur = self.options.shadow_blur
+        ox = self.options.shadow_offset_x
+        oy = self.options.shadow_offset_y
+        padding = blur * 2 + max(abs(ox), abs(oy))
+
+        shadow_width = self.current_width + padding * 2
+        shadow_height = self.current_height + padding * 2
+
+        # Generate shadow image
+        shadow_path = os.path.join(self.recording_dir, 'decoration_shadow.png')
+
+        # Use rounded corner mask if available for shadow shape
+        mask_path = os.path.join(self.recording_dir, 'decoration_mask.png')
+        source_mask = mask_path if os.path.exists(mask_path) else None
+
+        if not generate_shadow(
+            width=self.current_width,
+            height=self.current_height,
+            output_path=shadow_path,
+            blur_radius=blur,
+            offset_x=ox,
+            offset_y=oy,
+            opacity=self.options.shadow_opacity,
+            color=self.options.shadow_color,
+            source_mask_path=source_mask,
+        ):
+            return False
+
+        self._decoration_files.append(shadow_path)
+        shadow_idx = self.add_input(shadow_path, is_image=True)
+        shadow_stream = f'[{shadow_idx}:v]'
+
+        # Calculate where to position content on shadow canvas
+        # Content goes at (padding - offset) so shadow appears offset from content
+        content_x = padding - ox
+        content_y = padding - oy
+
+        # Loop shadow and overlay content on top
+        shadow_loop = self._next_stream('shadow')
+        result = self._next_stream('withshadow')
+        self._filter_stages.append(f'{shadow_stream}loop=loop=-1:size=1{shadow_loop}')
+        self._filter_stages.append(
+            f'{shadow_loop}{self._prev_stream}overlay={content_x}:{content_y}{result}'
+        )
+        self._prev_stream = result
+
+        # Update dimensions to shadow canvas size
+        self.current_width = shadow_width
+        self.current_height = shadow_height
+        return True
+
     def build(self) -> Tuple[List[str], str, str]:
         """
         Build the FFmpeg arguments.
@@ -396,8 +495,11 @@ def build_gif_command(
     # Add rounded corners
     pipeline.add_border_radius()
 
-    # Add outer margin last
+    # Add outer margin
     pipeline.add_margin()
+
+    # Add drop shadow (outermost layer)
+    pipeline.add_shadow()
 
     # Build filter complex
     # Start with the frames stream
@@ -420,6 +522,151 @@ def build_gif_command(
     return cmd, pipeline.get_decoration_files()
 
 
+def apply_decorations_to_png(
+    input_path: str,
+    output_path: str,
+    options: DecorationOptions,
+    temp_dir: str = None,
+) -> bool:
+    """
+    Apply decorations to a PNG screenshot.
+
+    Uses Pillow to apply decorations in order:
+    1. Add padding
+    2. Add window bar
+    3. Apply rounded corners
+    4. Add margin
+    5. Add shadow
+
+    Args:
+        input_path: Path to input PNG file
+        output_path: Path for decorated output PNG
+        options: DecorationOptions with decoration settings
+        temp_dir: Optional temp directory for intermediate files
+
+    Returns:
+        True on success, False on failure
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        import sys
+        print('Pillow required for PNG decorations', file=sys.stderr)
+        return False
+
+    import tempfile
+    import shutil
+
+    # Create temp dir if not provided
+    cleanup_temp = False
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp()
+        cleanup_temp = True
+
+    try:
+        # Load input image
+        img = Image.open(input_path).convert('RGBA')
+        width, height = img.size
+
+        # 1. Add padding
+        if options.padding > 0:
+            p = options.padding
+            padded = Image.new('RGBA', (width + p * 2, height + p * 2), options.padding_color)
+            padded.paste(img, (p, p))
+            img = padded
+            width, height = img.size
+
+        # 2. Add window bar
+        if options.window_bar_style and options.window_bar_style != 'none':
+            bar_path = os.path.join(temp_dir, 'decoration_bar.png')
+            if not generate_window_bar(
+                width=width,
+                output_path=bar_path,
+                style=options.window_bar_style,
+                bg_color=options.bar_color,
+                bar_height=options.bar_height,
+            ):
+                return False
+
+            bar = Image.open(bar_path).convert('RGBA')
+            bar_height = options.bar_height
+
+            with_bar = Image.new('RGBA', (width, height + bar_height), options.bar_color)
+            with_bar.paste(bar, (0, 0))
+            with_bar.paste(img, (0, bar_height))
+            img = with_bar
+            width, height = img.size
+
+        # 3. Apply rounded corners
+        if options.border_radius > 0:
+            mask_path = os.path.join(temp_dir, 'decoration_mask.png')
+            if not generate_corner_mask(
+                width=width,
+                height=height,
+                output_path=mask_path,
+                radius=options.border_radius,
+            ):
+                return False
+
+            mask = Image.open(mask_path).convert('L')
+            rounded = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+            rounded.paste(img, mask=mask)
+            img = rounded
+
+        # 4. Add margin
+        if options.margin > 0:
+            m = options.margin
+            # Use transparent for margin if shadow is enabled
+            margin_color = options.margin_color if not options.shadow_enabled else (0, 0, 0, 0)
+            margined = Image.new('RGBA', (width + m * 2, height + m * 2), margin_color)
+            margined.paste(img, (m, m), img if img.mode == 'RGBA' else None)
+            img = margined
+            width, height = img.size
+
+        # 5. Add shadow
+        if options.shadow_enabled:
+            blur = options.shadow_blur
+            ox = options.shadow_offset_x
+            oy = options.shadow_offset_y
+            shadow_padding = blur * 2 + max(abs(ox), abs(oy))
+
+            # Use corner mask for shadow shape if rounded corners were applied
+            mask_path = os.path.join(temp_dir, 'decoration_mask.png')
+            source_mask = mask_path if os.path.exists(mask_path) else None
+
+            shadow_path = os.path.join(temp_dir, 'decoration_shadow.png')
+            if not generate_shadow(
+                width=width,
+                height=height,
+                output_path=shadow_path,
+                blur_radius=blur,
+                offset_x=ox,
+                offset_y=oy,
+                opacity=options.shadow_opacity,
+                color=options.shadow_color,
+                source_mask_path=source_mask,
+            ):
+                return False
+
+            shadow = Image.open(shadow_path).convert('RGBA')
+
+            # Position content on shadow canvas
+            content_x = shadow_padding - ox
+            content_y = shadow_padding - oy
+
+            # Composite content over shadow
+            shadow.paste(img, (content_x, content_y), img)
+            img = shadow
+
+        # Save output
+        img.save(output_path, 'PNG')
+        return True
+
+    finally:
+        if cleanup_temp:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
 if __name__ == '__main__':
     import sys
     import json
@@ -428,11 +675,41 @@ if __name__ == '__main__':
         print('Usage: ffmpeg_pipeline.py <command> [args]')
         print('Commands:')
         print('  build <frame_pattern> <output> <recording_dir> <options_json>')
+        print('  decorate_png <input> <output> <options_json>')
         sys.exit(1)
 
     cmd = sys.argv[1]
 
-    if cmd == 'build':
+    if cmd == 'decorate_png':
+        input_path = sys.argv[2]
+        output_path = sys.argv[3]
+        opts_json = sys.argv[4] if len(sys.argv) > 4 else '{}'
+
+        opts_dict = json.loads(opts_json)
+        options = DecorationOptions(
+            window_bar_style=opts_dict.get('window_bar'),
+            bar_color=opts_dict.get('bar_color', '#1e1e1e'),
+            bar_height=opts_dict.get('bar_height', DEFAULT_BAR_HEIGHT),
+            border_radius=opts_dict.get('border_radius', 0),
+            margin=opts_dict.get('margin', 0),
+            margin_color=opts_dict.get('margin_color', '#000000'),
+            padding=opts_dict.get('padding', 0),
+            padding_color=opts_dict.get('padding_color', '#1e1e1e'),
+            shadow_enabled=opts_dict.get('shadow_enabled', False),
+            shadow_blur=opts_dict.get('shadow_blur', 15),
+            shadow_offset_x=opts_dict.get('shadow_offset_x', 0),
+            shadow_offset_y=opts_dict.get('shadow_offset_y', 8),
+            shadow_opacity=opts_dict.get('shadow_opacity', 0.4),
+            shadow_color=opts_dict.get('shadow_color', '#000000'),
+        )
+
+        if apply_decorations_to_png(input_path, output_path, options):
+            print(f'Decorated: {output_path}')
+        else:
+            print('Error: Failed to apply decorations', file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == 'build':
         frame_pattern = sys.argv[2]
         output = sys.argv[3]
         recording_dir = sys.argv[4]

@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.python.decorations import (
     generate_window_bar,
     generate_corner_mask,
+    generate_shadow,
     get_available_backend,
     _check_pillow,
     _check_imagemagick,
@@ -481,6 +482,240 @@ class TestImageMagickBackend:
         output_path = os.path.join(temp_dir, 'timeout_test.png')
         result = generate_window_bar_imagemagick(800, output_path)
         assert result is True
+
+
+class TestShadowPipeline:
+    """Functional tests for shadow decoration pipeline."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        d = tempfile.mkdtemp()
+        frame_path = os.path.join(d, 'frame_00000.png')
+        open(frame_path, 'w').close()
+        yield d
+        shutil.rmtree(d)
+
+    def test_shadow_disabled_no_effect(self, temp_dir):
+        """Shadow disabled has no effect on dimensions."""
+        opts = DecorationOptions(shadow_enabled=False)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        result = pipeline.add_shadow()
+
+        assert result is False
+        assert pipeline.current_width == 100
+        assert pipeline.current_height == 100
+        assert len(pipeline._decoration_files) == 0
+
+    def test_shadow_enabled_increases_dimensions(self, temp_dir):
+        """Shadow enabled increases dimensions by blur spread + offset."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(
+            shadow_enabled=True,
+            shadow_blur=15,
+            shadow_offset_x=0,
+            shadow_offset_y=8,
+        )
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        result = pipeline.add_shadow()
+
+        assert result is True
+        # padding = 15*2 + max(0, 8) = 38
+        # dimensions = 100 + 38*2 = 176
+        assert pipeline.current_width == 176
+        assert pipeline.current_height == 176
+
+    def test_shadow_creates_decoration_file(self, temp_dir):
+        """Shadow creates decoration_shadow.png file."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(shadow_enabled=True)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        pipeline.add_shadow()
+
+        shadow_path = os.path.join(temp_dir, 'decoration_shadow.png')
+        assert os.path.exists(shadow_path)
+        assert shadow_path in pipeline._decoration_files
+
+    def test_shadow_with_all_decorations(self, temp_dir):
+        """Shadow works with all other decorations combined."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(
+            window_bar_style='colorful',
+            bar_height=30,
+            padding=10,
+            border_radius=8,
+            margin=20,
+            shadow_enabled=True,
+            shadow_blur=15,
+            shadow_offset_y=8,
+        )
+        pipeline = DecorationPipeline(800, 600, opts, temp_dir)
+
+        # Apply all decorations in order
+        assert pipeline.add_padding() is True
+        assert pipeline.add_window_bar() is True
+        assert pipeline.add_border_radius() is True
+        assert pipeline.add_margin() is True
+        assert pipeline.add_shadow() is True
+
+        # Verify decoration files created
+        assert os.path.exists(os.path.join(temp_dir, 'decoration_bar.png'))
+        assert os.path.exists(os.path.join(temp_dir, 'decoration_mask.png'))
+        assert os.path.exists(os.path.join(temp_dir, 'decoration_shadow.png'))
+
+        # Verify final dimensions
+        # Original: 800x600
+        # After padding: 820x620 (+20)
+        # After window_bar: 820x650 (+30 height)
+        # After margin: 860x690 (+40)
+        # After shadow: 860 + 76 = 936 width, 690 + 76 = 766 height
+        # (shadow padding = 15*2 + max(0, 8) = 38, so +38*2 = +76)
+        assert pipeline.current_width == 936
+        assert pipeline.current_height == 766
+
+    def test_shadow_filter_chain_syntax(self, temp_dir):
+        """Shadow adds correct filters to filter chain."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(shadow_enabled=True, shadow_blur=10)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        pipeline.add_shadow()
+        _, filter_complex, _ = pipeline.build()
+
+        # Should contain loop for shadow image
+        assert 'loop=loop=-1:size=1' in filter_complex
+        # Should contain overlay filter for compositing
+        assert 'overlay=' in filter_complex
+
+    def test_shadow_with_rounded_corners_uses_mask(self, temp_dir):
+        """Shadow uses corner mask when border_radius is set."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(
+            border_radius=10,
+            shadow_enabled=True,
+            shadow_blur=10,
+        )
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        # Add rounded corners first (creates mask)
+        pipeline.add_border_radius()
+        mask_path = os.path.join(temp_dir, 'decoration_mask.png')
+        assert os.path.exists(mask_path)
+
+        # Add shadow (should use the mask for shadow shape)
+        result = pipeline.add_shadow()
+        assert result is True
+
+        # Verify shadow file created
+        shadow_path = os.path.join(temp_dir, 'decoration_shadow.png')
+        assert os.path.exists(shadow_path)
+
+    def test_shadow_negative_offset(self, temp_dir):
+        """Shadow handles negative offsets correctly."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(
+            shadow_enabled=True,
+            shadow_blur=10,
+            shadow_offset_x=-15,
+            shadow_offset_y=5,
+        )
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        result = pipeline.add_shadow()
+
+        assert result is True
+        # padding = 10*2 + max(15, 5) = 35
+        # dimensions = 100 + 35*2 = 170
+        assert pipeline.current_width == 170
+        assert pipeline.current_height == 170
+
+    def test_shadow_cleanup(self, temp_dir):
+        """Shadow file is cleaned up with other decorations."""
+        if get_available_backend() is None:
+            pytest.skip("No image backend available")
+
+        opts = DecorationOptions(shadow_enabled=True)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        pipeline.add_shadow()
+
+        shadow_path = os.path.join(temp_dir, 'decoration_shadow.png')
+        assert os.path.exists(shadow_path)
+
+        pipeline.cleanup_decoration_files()
+
+        assert not os.path.exists(shadow_path)
+
+
+class TestShadowImageGeneration:
+    """Functional tests for shadow image generation."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        d = tempfile.mkdtemp()
+        yield d
+        shutil.rmtree(d)
+
+    def test_shadow_is_rgba(self, temp_dir):
+        """Generated shadow image is RGBA format."""
+        if not _check_pillow():
+            pytest.skip("Pillow not available")
+
+        output_path = os.path.join(temp_dir, 'shadow.png')
+        result = generate_shadow(100, 100, output_path)
+
+        assert result is True
+
+        from PIL import Image
+        img = Image.open(output_path)
+        assert img.mode == 'RGBA'
+
+    def test_shadow_has_transparency(self, temp_dir):
+        """Shadow image has transparent background."""
+        if not _check_pillow():
+            pytest.skip("Pillow not available")
+
+        output_path = os.path.join(temp_dir, 'shadow.png')
+        generate_shadow(100, 100, output_path, blur_radius=10, opacity=0.5)
+
+        from PIL import Image
+        img = Image.open(output_path)
+
+        # Check corners are transparent (alpha = 0)
+        alpha = img.split()[3]
+        corner_alpha = alpha.getpixel((0, 0))
+        assert corner_alpha == 0  # Corners should be fully transparent
+
+    def test_shadow_color_applied(self, temp_dir):
+        """Shadow uses specified color."""
+        if not _check_pillow():
+            pytest.skip("Pillow not available")
+
+        output_path = os.path.join(temp_dir, 'red_shadow.png')
+        generate_shadow(100, 100, output_path, color='#ff0000', blur_radius=5, opacity=1.0)
+
+        from PIL import Image
+        img = Image.open(output_path)
+
+        # Check center pixel has red color
+        r, g, b, a = img.getpixel((img.width // 2, img.height // 2))
+        assert r == 255
+        assert g == 0
+        assert b == 0
 
 
 if __name__ == '__main__':

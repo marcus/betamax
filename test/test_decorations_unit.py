@@ -22,6 +22,10 @@ from lib.python.decorations import (
     _validate_dimensions,
     _validate_output_path,
     _validate_border_radius,
+    _validate_shadow_params,
+    _calculate_shadow_canvas_size,
+    generate_shadow,
+    generate_shadow_pillow,
     BAR_STYLES,
     DEFAULT_BAR_HEIGHT,
 )
@@ -575,6 +579,299 @@ class TestDecorationFilesTracking:
         # Should not raise
         pipeline.cleanup_decoration_files()
         assert pipeline._decoration_files == []
+
+
+class TestShadowParamsValidation:
+    """Unit tests for shadow parameter validation."""
+
+    def test_valid_blur_radius(self):
+        blur, _, _, _, _ = _validate_shadow_params(0, 0, 0, 0.5, '#000000')
+        assert blur == 0
+
+        blur, _, _, _, _ = _validate_shadow_params(15, 0, 0, 0.5, '#000000')
+        assert blur == 15
+
+        blur, _, _, _, _ = _validate_shadow_params(100, 0, 0, 0.5, '#000000')
+        assert blur == 100
+
+    def test_invalid_blur_radius(self):
+        with pytest.raises(ValueError, match='blur_radius must be 0-100'):
+            _validate_shadow_params(-1, 0, 0, 0.5, '#000000')
+        with pytest.raises(ValueError, match='blur_radius must be 0-100'):
+            _validate_shadow_params(101, 0, 0, 0.5, '#000000')
+
+    def test_valid_offsets(self):
+        _, ox, oy, _, _ = _validate_shadow_params(15, -200, 200, 0.5, '#000000')
+        assert ox == -200
+        assert oy == 200
+
+        _, ox, oy, _, _ = _validate_shadow_params(15, 0, 0, 0.5, '#000000')
+        assert ox == 0
+        assert oy == 0
+
+    def test_invalid_offsets(self):
+        with pytest.raises(ValueError, match='offset_x must be -200 to 200'):
+            _validate_shadow_params(15, -201, 0, 0.5, '#000000')
+        with pytest.raises(ValueError, match='offset_x must be -200 to 200'):
+            _validate_shadow_params(15, 201, 0, 0.5, '#000000')
+        with pytest.raises(ValueError, match='offset_y must be -200 to 200'):
+            _validate_shadow_params(15, 0, -201, 0.5, '#000000')
+        with pytest.raises(ValueError, match='offset_y must be -200 to 200'):
+            _validate_shadow_params(15, 0, 201, 0.5, '#000000')
+
+    def test_valid_opacity(self):
+        _, _, _, op, _ = _validate_shadow_params(15, 0, 0, 0.0, '#000000')
+        assert op == 0.0
+
+        _, _, _, op, _ = _validate_shadow_params(15, 0, 0, 0.4, '#000000')
+        assert op == 0.4
+
+        _, _, _, op, _ = _validate_shadow_params(15, 0, 0, 1.0, '#000000')
+        assert op == 1.0
+
+    def test_invalid_opacity(self):
+        with pytest.raises(ValueError, match='opacity must be 0.0-1.0'):
+            _validate_shadow_params(15, 0, 0, -0.1, '#000000')
+        with pytest.raises(ValueError, match='opacity must be 0.0-1.0'):
+            _validate_shadow_params(15, 0, 0, 1.1, '#000000')
+
+    def test_color_validation(self):
+        _, _, _, _, color = _validate_shadow_params(15, 0, 0, 0.5, '#000000')
+        assert color == '#000000'
+
+        _, _, _, _, color = _validate_shadow_params(15, 0, 0, 0.5, 'ffffff')
+        assert color == '#ffffff'
+
+        with pytest.raises(ValueError, match='non-hex'):
+            _validate_shadow_params(15, 0, 0, 0.5, '#gggggg')
+
+    def test_type_errors(self):
+        with pytest.raises(TypeError, match='blur_radius must be int'):
+            _validate_shadow_params('15', 0, 0, 0.5, '#000000')
+        with pytest.raises(TypeError, match='offset_x must be int'):
+            _validate_shadow_params(15, '0', 0, 0.5, '#000000')
+        with pytest.raises(TypeError, match='opacity must be float'):
+            _validate_shadow_params(15, 0, 0, '0.5', '#000000')
+
+
+class TestShadowCanvasCalculation:
+    """Unit tests for shadow canvas size calculation."""
+
+    def test_basic_calculation(self):
+        w, h, p = _calculate_shadow_canvas_size(100, 100, 15, 0, 8)
+        # padding = 15*2 + max(0, 8) = 38
+        assert p == 38
+        assert w == 100 + 38 * 2  # 176
+        assert h == 100 + 38 * 2  # 176
+
+    def test_negative_offset(self):
+        w, h, p = _calculate_shadow_canvas_size(100, 100, 10, -20, 0)
+        # padding = 10*2 + max(20, 0) = 40
+        assert p == 40
+        assert w == 180
+        assert h == 180
+
+    def test_zero_blur(self):
+        w, h, p = _calculate_shadow_canvas_size(100, 100, 0, 5, 5)
+        # padding = 0*2 + max(5, 5) = 5
+        assert p == 5
+        assert w == 110
+        assert h == 110
+
+
+class TestShadowGeneration:
+    """Unit tests for shadow generation."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        d = tempfile.mkdtemp()
+        yield d
+        shutil.rmtree(d)
+
+    def test_generate_shadow_pillow_basic(self, temp_dir):
+        output = os.path.join(temp_dir, 'shadow.png')
+
+        result = generate_shadow_pillow(
+            width=100,
+            height=100,
+            output_path=output,
+            blur_radius=15,
+            offset_x=0,
+            offset_y=8,
+            opacity=0.4,
+            color='#000000',
+        )
+
+        assert result is True
+        assert os.path.exists(output)
+
+        # Verify output is RGBA
+        from PIL import Image
+        img = Image.open(output)
+        assert img.mode == 'RGBA'
+
+        # Verify dimensions (100 + (15*2 + 8)*2 = 100 + 76 = 176)
+        assert img.width == 176
+        assert img.height == 176
+
+    def test_generate_shadow_with_mask(self, temp_dir):
+        # Create a simple corner mask first
+        from PIL import Image
+        mask_path = os.path.join(temp_dir, 'mask.png')
+        mask = Image.new('L', (100, 100), 255)
+        mask.save(mask_path)
+
+        output = os.path.join(temp_dir, 'shadow.png')
+        result = generate_shadow_pillow(
+            width=100,
+            height=100,
+            output_path=output,
+            blur_radius=10,
+            offset_x=0,
+            offset_y=5,
+            opacity=0.5,
+            color='#000000',
+            source_mask_path=mask_path,
+        )
+
+        assert result is True
+        assert os.path.exists(output)
+
+    def test_generate_shadow_wrapper(self, temp_dir):
+        output = os.path.join(temp_dir, 'shadow.png')
+
+        result = generate_shadow(
+            width=50,
+            height=50,
+            output_path=output,
+            blur_radius=5,
+            offset_x=2,
+            offset_y=4,
+            opacity=0.3,
+            color='#333333',
+        )
+
+        assert result is True
+        assert os.path.exists(output)
+
+    def test_generate_shadow_various_blur(self, temp_dir):
+        # Test with zero blur
+        output = os.path.join(temp_dir, 'shadow_zero.png')
+        result = generate_shadow(100, 100, output, blur_radius=0)
+        assert result is True
+
+        # Test with large blur
+        output = os.path.join(temp_dir, 'shadow_large.png')
+        result = generate_shadow(100, 100, output, blur_radius=50)
+        assert result is True
+
+    def test_generate_shadow_full_opacity(self, temp_dir):
+        output = os.path.join(temp_dir, 'shadow.png')
+        result = generate_shadow(100, 100, output, opacity=1.0)
+        assert result is True
+
+    def test_generate_shadow_with_offsets(self, temp_dir):
+        output = os.path.join(temp_dir, 'shadow.png')
+        result = generate_shadow(100, 100, output, offset_x=-10, offset_y=20)
+        assert result is True
+
+        from PIL import Image
+        img = Image.open(output)
+        # padding = 15*2 + max(10, 20) = 50
+        assert img.width == 100 + 50 * 2
+        assert img.height == 100 + 50 * 2
+
+
+class TestDecorationOptionsShadowValidation:
+    """Unit tests for DecorationOptions shadow validation."""
+
+    def test_default_shadow_options(self):
+        opts = DecorationOptions()
+        assert opts.shadow_enabled is False
+        assert opts.shadow_blur == 15
+        assert opts.shadow_offset_x == 0
+        assert opts.shadow_offset_y == 8
+        assert opts.shadow_opacity == 0.4
+        assert opts.shadow_color == '#000000'
+
+    def test_shadow_enabled(self):
+        opts = DecorationOptions(shadow_enabled=True)
+        assert opts.shadow_enabled is True
+
+    def test_shadow_blur_validation(self):
+        DecorationOptions(shadow_blur=0)
+        DecorationOptions(shadow_blur=100)
+
+        with pytest.raises(ValueError, match='shadow_blur must be 0-100'):
+            DecorationOptions(shadow_blur=-1)
+        with pytest.raises(ValueError, match='shadow_blur must be 0-100'):
+            DecorationOptions(shadow_blur=101)
+
+    def test_shadow_offset_validation(self):
+        DecorationOptions(shadow_offset_x=-200)
+        DecorationOptions(shadow_offset_x=200)
+        DecorationOptions(shadow_offset_y=-200)
+        DecorationOptions(shadow_offset_y=200)
+
+        with pytest.raises(ValueError, match='shadow_offset_x must be -200 to 200'):
+            DecorationOptions(shadow_offset_x=-201)
+        with pytest.raises(ValueError, match='shadow_offset_x must be -200 to 200'):
+            DecorationOptions(shadow_offset_x=201)
+        with pytest.raises(ValueError, match='shadow_offset_y must be -200 to 200'):
+            DecorationOptions(shadow_offset_y=-201)
+        with pytest.raises(ValueError, match='shadow_offset_y must be -200 to 200'):
+            DecorationOptions(shadow_offset_y=201)
+
+    def test_shadow_opacity_validation(self):
+        DecorationOptions(shadow_opacity=0.0)
+        DecorationOptions(shadow_opacity=1.0)
+
+        with pytest.raises(ValueError, match='shadow_opacity must be 0.0-1.0'):
+            DecorationOptions(shadow_opacity=-0.1)
+        with pytest.raises(ValueError, match='shadow_opacity must be 0.0-1.0'):
+            DecorationOptions(shadow_opacity=1.1)
+
+    def test_shadow_color_normalization(self):
+        opts = DecorationOptions(shadow_color='ff0000')
+        assert opts.shadow_color == '#ff0000'
+
+
+class TestAddShadowMethod:
+    """Unit tests for DecorationPipeline.add_shadow() method."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        d = tempfile.mkdtemp()
+        yield d
+        shutil.rmtree(d)
+
+    def test_shadow_disabled_returns_false(self, temp_dir):
+        opts = DecorationOptions(shadow_enabled=False)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+        assert pipeline.add_shadow() is False
+        assert pipeline.current_width == 100
+        assert pipeline.current_height == 100
+
+    def test_shadow_enabled_returns_true(self, temp_dir):
+        opts = DecorationOptions(shadow_enabled=True, shadow_blur=15, shadow_offset_y=8)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        result = pipeline.add_shadow()
+
+        assert result is True
+        # padding = 15*2 + max(0, 8) = 38
+        assert pipeline.current_width == 100 + 38 * 2
+        assert pipeline.current_height == 100 + 38 * 2
+
+    def test_shadow_creates_file(self, temp_dir):
+        opts = DecorationOptions(shadow_enabled=True)
+        pipeline = DecorationPipeline(100, 100, opts, temp_dir)
+
+        pipeline.add_shadow()
+
+        shadow_path = os.path.join(temp_dir, 'decoration_shadow.png')
+        assert os.path.exists(shadow_path)
+        assert shadow_path in pipeline.get_decoration_files()
 
 
 if __name__ == '__main__':

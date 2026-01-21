@@ -241,6 +241,26 @@ process_directives() {
         [[ "$color" != \#* ]] && color="#$color"
         GIF_PADDING_COLOR="$color"
         ;;
+      @set:shadow:*)
+        GIF_SHADOW="${key#@set:shadow:}"
+        ;;
+      @set:shadow_blur:*)
+        GIF_SHADOW_BLUR="${key#@set:shadow_blur:}"
+        ;;
+      @set:shadow_offset_x:*)
+        GIF_SHADOW_OFFSET_X="${key#@set:shadow_offset_x:}"
+        ;;
+      @set:shadow_offset_y:*)
+        GIF_SHADOW_OFFSET_Y="${key#@set:shadow_offset_y:}"
+        ;;
+      @set:shadow_opacity:*)
+        GIF_SHADOW_OPACITY="${key#@set:shadow_opacity:}"
+        ;;
+      @set:shadow_color:*)
+        local color="${key#@set:shadow_color:}"
+        [[ "$color" != \#* ]] && color="#$color"
+        GIF_SHADOW_COLOR="$color"
+        ;;
       @set:theme:*)
         local theme_name="${key#@set:theme:}"
         # Get theme colors from Python

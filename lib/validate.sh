@@ -232,6 +232,58 @@ sys.exit(0 if get_theme('$value') else 1)
         return 1
       fi
       ;;
+    shadow)
+      # Validate boolean value
+      case "$value" in
+        true|false)
+          ;;
+        *)
+          validation_error "Invalid shadow value: $value (expected: true or false)" "$idx"
+          return 1
+          ;;
+      esac
+      ;;
+    shadow_blur)
+      # Validate integer 0-100
+      if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+        validation_error "Invalid integer for shadow_blur: $value" "$idx"
+        return 1
+      fi
+      if [[ "$value" -lt 0 ]] || [[ "$value" -gt 100 ]]; then
+        validation_error "shadow_blur must be 0-100 (got: $value)" "$idx"
+        return 1
+      fi
+      ;;
+    shadow_offset_x|shadow_offset_y)
+      # Validate integer -200 to 200
+      if ! [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        validation_error "Invalid integer for $key: $value" "$idx"
+        return 1
+      fi
+      if [[ "$value" -lt -200 ]] || [[ "$value" -gt 200 ]]; then
+        validation_error "$key must be -200 to 200 (got: $value)" "$idx"
+        return 1
+      fi
+      ;;
+    shadow_opacity)
+      # Validate decimal 0.0-1.0
+      if ! [[ "$value" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+        validation_error "Invalid decimal for shadow_opacity: $value" "$idx"
+        return 1
+      fi
+      local valid=$(echo "$value >= 0.0 && $value <= 1.0" | bc -l)
+      if [[ "$valid" != "1" ]]; then
+        validation_error "shadow_opacity must be 0.0-1.0 (got: $value)" "$idx"
+        return 1
+      fi
+      ;;
+    shadow_color)
+      # Validate hex color format
+      if ! [[ "$value" =~ ^#?[0-9a-fA-F]{6}$ ]]; then
+        validation_error "Invalid color format for shadow_color: $value (expected RRGGBB or #RRGGBB)" "$idx"
+        return 1
+      fi
+      ;;
     *)
       validation_error "Unknown setting: $key" "$idx"
       return 1

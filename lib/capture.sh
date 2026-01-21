@@ -28,8 +28,97 @@ capture_to_file() {
       if command -v termshot &>/dev/null; then
         local cols
         cols=$(tmux_cmd display-message -t "$SESSION" -p '#{pane_width}')
-        termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
-        echo "Saved: $OUTPUT_DIR/$name.png"
+
+        # Check if decorations are enabled
+        local has_decorations=false
+        [[ -n "$GIF_WINDOW_BAR" && "$GIF_WINDOW_BAR" != "none" ]] && has_decorations=true
+        [[ -n "$GIF_BORDER_RADIUS" && "$GIF_BORDER_RADIUS" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ -n "$GIF_MARGIN" && "$GIF_MARGIN" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ -n "$GIF_PADDING" && "$GIF_PADDING" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ "$GIF_SHADOW" == "true" ]] && has_decorations=true
+
+        if [[ "$has_decorations" == true ]]; then
+          # Generate raw PNG, then apply decorations
+          local raw_png="/tmp/betamax_raw_$$.png"
+          termshot --raw-read "$txt_file" --columns "$cols" --filename "$raw_png" 2>/dev/null
+
+          # Apply decorations via Python
+          local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          local python_dir="$script_dir/python"
+
+          export BETAMAX_RAW_PNG="$raw_png"
+          export BETAMAX_OUTPUT_PNG="$OUTPUT_DIR/$name.png"
+          export BETAMAX_WINDOW_BAR="${GIF_WINDOW_BAR:-}"
+          export BETAMAX_BAR_COLOR="${GIF_BAR_COLOR:-#1e1e1e}"
+          export BETAMAX_BAR_HEIGHT="${GIF_BAR_HEIGHT:-30}"
+          export BETAMAX_BORDER_RADIUS="${GIF_BORDER_RADIUS:-0}"
+          export BETAMAX_MARGIN="${GIF_MARGIN:-0}"
+          export BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-#000000}"
+          export BETAMAX_PADDING="${GIF_PADDING:-0}"
+          export BETAMAX_PADDING_COLOR="${GIF_PADDING_COLOR:-#1e1e1e}"
+          export BETAMAX_SHADOW="${GIF_SHADOW:-false}"
+          export BETAMAX_SHADOW_BLUR="${GIF_SHADOW_BLUR:-15}"
+          export BETAMAX_SHADOW_OFFSET_X="${GIF_SHADOW_OFFSET_X:-0}"
+          export BETAMAX_SHADOW_OFFSET_Y="${GIF_SHADOW_OFFSET_Y:-8}"
+          export BETAMAX_SHADOW_OPACITY="${GIF_SHADOW_OPACITY:-0.4}"
+          export BETAMAX_SHADOW_COLOR="${GIF_SHADOW_COLOR:-#000000}"
+
+          PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys
+import os
+sys.path.insert(0, os.environ.get('PYTHONPATH', '').split(':')[0])
+from ffmpeg_pipeline import apply_decorations_to_png, DecorationOptions, DEFAULT_BAR_HEIGHT
+
+def get_env_int(name, default):
+    val = os.environ.get(name, '')
+    try:
+        return int(val) if val else default
+    except ValueError:
+        return default
+
+def get_env_float(name, default):
+    val = os.environ.get(name, '')
+    try:
+        return float(val) if val else default
+    except ValueError:
+        return default
+
+window_bar = os.environ.get('BETAMAX_WINDOW_BAR', '')
+options = DecorationOptions(
+    window_bar_style=window_bar if window_bar and window_bar != 'none' else None,
+    bar_color=os.environ.get('BETAMAX_BAR_COLOR', '') or '#1e1e1e',
+    bar_height=get_env_int('BETAMAX_BAR_HEIGHT', 30),
+    border_radius=get_env_int('BETAMAX_BORDER_RADIUS', 0),
+    margin=get_env_int('BETAMAX_MARGIN', 0),
+    margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',
+    padding=get_env_int('BETAMAX_PADDING', 0),
+    padding_color=os.environ.get('BETAMAX_PADDING_COLOR', '') or '#1e1e1e',
+    shadow_enabled=os.environ.get('BETAMAX_SHADOW', 'false').lower() == 'true',
+    shadow_blur=get_env_int('BETAMAX_SHADOW_BLUR', 15),
+    shadow_offset_x=get_env_int('BETAMAX_SHADOW_OFFSET_X', 0),
+    shadow_offset_y=get_env_int('BETAMAX_SHADOW_OFFSET_Y', 8),
+    shadow_opacity=get_env_float('BETAMAX_SHADOW_OPACITY', 0.4),
+    shadow_color=os.environ.get('BETAMAX_SHADOW_COLOR', '') or '#000000',
+)
+
+if not apply_decorations_to_png(
+    os.environ['BETAMAX_RAW_PNG'],
+    os.environ['BETAMAX_OUTPUT_PNG'],
+    options
+):
+    sys.exit(1)
+"
+          rm -f "$raw_png"
+          unset BETAMAX_RAW_PNG BETAMAX_OUTPUT_PNG BETAMAX_WINDOW_BAR BETAMAX_BAR_COLOR
+          unset BETAMAX_BAR_HEIGHT BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
+          unset BETAMAX_PADDING BETAMAX_PADDING_COLOR BETAMAX_SHADOW BETAMAX_SHADOW_BLUR
+          unset BETAMAX_SHADOW_OFFSET_X BETAMAX_SHADOW_OFFSET_Y BETAMAX_SHADOW_OPACITY BETAMAX_SHADOW_COLOR
+          echo "Saved: $OUTPUT_DIR/$name.png"
+        else
+          # No decorations, use termshot directly
+          termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
+          echo "Saved: $OUTPUT_DIR/$name.png"
+        fi
       else
         echo "Warning: termshot not installed, skipping PNG"
       fi
@@ -44,8 +133,96 @@ capture_to_file() {
       if command -v termshot &>/dev/null; then
         local cols
         cols=$(tmux_cmd display-message -t "$SESSION" -p '#{pane_width}')
-        termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
-        echo "Saved: $OUTPUT_DIR/$name.png"
+
+        # Check if decorations are enabled
+        local has_decorations=false
+        [[ -n "$GIF_WINDOW_BAR" && "$GIF_WINDOW_BAR" != "none" ]] && has_decorations=true
+        [[ -n "$GIF_BORDER_RADIUS" && "$GIF_BORDER_RADIUS" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ -n "$GIF_MARGIN" && "$GIF_MARGIN" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ -n "$GIF_PADDING" && "$GIF_PADDING" -gt 0 ]] 2>/dev/null && has_decorations=true
+        [[ "$GIF_SHADOW" == "true" ]] && has_decorations=true
+
+        if [[ "$has_decorations" == true ]]; then
+          # Generate raw PNG, then apply decorations
+          local raw_png="/tmp/betamax_raw_$$.png"
+          termshot --raw-read "$txt_file" --columns "$cols" --filename "$raw_png" 2>/dev/null
+
+          # Apply decorations via Python
+          local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          local python_dir="$script_dir/python"
+
+          export BETAMAX_RAW_PNG="$raw_png"
+          export BETAMAX_OUTPUT_PNG="$OUTPUT_DIR/$name.png"
+          export BETAMAX_WINDOW_BAR="${GIF_WINDOW_BAR:-}"
+          export BETAMAX_BAR_COLOR="${GIF_BAR_COLOR:-#1e1e1e}"
+          export BETAMAX_BAR_HEIGHT="${GIF_BAR_HEIGHT:-30}"
+          export BETAMAX_BORDER_RADIUS="${GIF_BORDER_RADIUS:-0}"
+          export BETAMAX_MARGIN="${GIF_MARGIN:-0}"
+          export BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-#000000}"
+          export BETAMAX_PADDING="${GIF_PADDING:-0}"
+          export BETAMAX_PADDING_COLOR="${GIF_PADDING_COLOR:-#1e1e1e}"
+          export BETAMAX_SHADOW="${GIF_SHADOW:-false}"
+          export BETAMAX_SHADOW_BLUR="${GIF_SHADOW_BLUR:-15}"
+          export BETAMAX_SHADOW_OFFSET_X="${GIF_SHADOW_OFFSET_X:-0}"
+          export BETAMAX_SHADOW_OFFSET_Y="${GIF_SHADOW_OFFSET_Y:-8}"
+          export BETAMAX_SHADOW_OPACITY="${GIF_SHADOW_OPACITY:-0.4}"
+          export BETAMAX_SHADOW_COLOR="${GIF_SHADOW_COLOR:-#000000}"
+
+          PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys
+import os
+sys.path.insert(0, os.environ.get('PYTHONPATH', '').split(':')[0])
+from ffmpeg_pipeline import apply_decorations_to_png, DecorationOptions, DEFAULT_BAR_HEIGHT
+
+def get_env_int(name, default):
+    val = os.environ.get(name, '')
+    try:
+        return int(val) if val else default
+    except ValueError:
+        return default
+
+def get_env_float(name, default):
+    val = os.environ.get(name, '')
+    try:
+        return float(val) if val else default
+    except ValueError:
+        return default
+
+window_bar = os.environ.get('BETAMAX_WINDOW_BAR', '')
+options = DecorationOptions(
+    window_bar_style=window_bar if window_bar and window_bar != 'none' else None,
+    bar_color=os.environ.get('BETAMAX_BAR_COLOR', '') or '#1e1e1e',
+    bar_height=get_env_int('BETAMAX_BAR_HEIGHT', 30),
+    border_radius=get_env_int('BETAMAX_BORDER_RADIUS', 0),
+    margin=get_env_int('BETAMAX_MARGIN', 0),
+    margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',
+    padding=get_env_int('BETAMAX_PADDING', 0),
+    padding_color=os.environ.get('BETAMAX_PADDING_COLOR', '') or '#1e1e1e',
+    shadow_enabled=os.environ.get('BETAMAX_SHADOW', 'false').lower() == 'true',
+    shadow_blur=get_env_int('BETAMAX_SHADOW_BLUR', 15),
+    shadow_offset_x=get_env_int('BETAMAX_SHADOW_OFFSET_X', 0),
+    shadow_offset_y=get_env_int('BETAMAX_SHADOW_OFFSET_Y', 8),
+    shadow_opacity=get_env_float('BETAMAX_SHADOW_OPACITY', 0.4),
+    shadow_color=os.environ.get('BETAMAX_SHADOW_COLOR', '') or '#000000',
+)
+
+if not apply_decorations_to_png(
+    os.environ['BETAMAX_RAW_PNG'],
+    os.environ['BETAMAX_OUTPUT_PNG'],
+    options
+):
+    sys.exit(1)
+"
+          rm -f "$raw_png"
+          unset BETAMAX_RAW_PNG BETAMAX_OUTPUT_PNG BETAMAX_WINDOW_BAR BETAMAX_BAR_COLOR
+          unset BETAMAX_BAR_HEIGHT BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
+          unset BETAMAX_PADDING BETAMAX_PADDING_COLOR BETAMAX_SHADOW BETAMAX_SHADOW_BLUR
+          unset BETAMAX_SHADOW_OFFSET_X BETAMAX_SHADOW_OFFSET_Y BETAMAX_SHADOW_OPACITY BETAMAX_SHADOW_COLOR
+          echo "Saved: $OUTPUT_DIR/$name.png"
+        else
+          termshot --raw-read "$txt_file" --columns "$cols" --filename "$OUTPUT_DIR/$name.png" 2>/dev/null
+          echo "Saved: $OUTPUT_DIR/$name.png"
+        fi
       fi
       ;;
   esac
@@ -238,6 +415,7 @@ recording_stop() {
   [[ -n "$GIF_BORDER_RADIUS" && "$GIF_BORDER_RADIUS" -gt 0 ]] 2>/dev/null && has_decorations=true
   [[ -n "$GIF_MARGIN" && "$GIF_MARGIN" -gt 0 ]] 2>/dev/null && has_decorations=true
   [[ -n "$GIF_PADDING" && "$GIF_PADDING" -gt 0 ]] 2>/dev/null && has_decorations=true
+  [[ "$GIF_SHADOW" == "true" ]] && has_decorations=true
 
   if [[ "$has_decorations" == true ]]; then
     # Use Python pipeline for decorations
@@ -298,6 +476,12 @@ recording_stop_with_decorations() {
   export BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-}"
   export BETAMAX_PADDING="${GIF_PADDING:-0}"
   export BETAMAX_PADDING_COLOR="${GIF_PADDING_COLOR:-}"
+  export BETAMAX_SHADOW="${GIF_SHADOW:-false}"
+  export BETAMAX_SHADOW_BLUR="${GIF_SHADOW_BLUR:-15}"
+  export BETAMAX_SHADOW_OFFSET_X="${GIF_SHADOW_OFFSET_X:-0}"
+  export BETAMAX_SHADOW_OFFSET_Y="${GIF_SHADOW_OFFSET_Y:-8}"
+  export BETAMAX_SHADOW_OPACITY="${GIF_SHADOW_OPACITY:-0.4}"
+  export BETAMAX_SHADOW_COLOR="${GIF_SHADOW_COLOR:-#000000}"
   export BETAMAX_RECORDING_DIR="$RECORDING_DIR"
   export BETAMAX_OUTPUT_DIR="$OUTPUT_DIR"
   export BETAMAX_OUTPUT_FILE="$output_file"
@@ -335,6 +519,12 @@ options = DecorationOptions(
     margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',
     padding=get_env_int('BETAMAX_PADDING', 0),
     padding_color=os.environ.get('BETAMAX_PADDING_COLOR', '') or '#1e1e1e',
+    shadow_enabled=os.environ.get('BETAMAX_SHADOW', 'false').lower() == 'true',
+    shadow_blur=get_env_int('BETAMAX_SHADOW_BLUR', 15),
+    shadow_offset_x=get_env_int('BETAMAX_SHADOW_OFFSET_X', 0),
+    shadow_offset_y=get_env_int('BETAMAX_SHADOW_OFFSET_Y', 8),
+    shadow_opacity=get_env_float('BETAMAX_SHADOW_OPACITY', 0.4),
+    shadow_color=os.environ.get('BETAMAX_SHADOW_COLOR', '') or '#000000',
     speed=get_env_float('BETAMAX_SPEED', 1.0),
     frame_delay_ms=get_env_int('BETAMAX_GIF_DELAY', 200),
 )
@@ -375,6 +565,7 @@ pipeline.add_padding()
 pipeline.add_window_bar()
 pipeline.add_border_radius()
 pipeline.add_margin()
+pipeline.add_shadow()
 
 # Build filter complex
 input_args, filter_complex, output_stream = pipeline.build()
@@ -401,6 +592,8 @@ if result.returncode != 0:
   unset BETAMAX_GIF_DELAY BETAMAX_SPEED BETAMAX_WINDOW_BAR BETAMAX_BAR_COLOR
   unset BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
   unset BETAMAX_PADDING BETAMAX_PADDING_COLOR BETAMAX_RECORDING_DIR
+  unset BETAMAX_SHADOW BETAMAX_SHADOW_BLUR BETAMAX_SHADOW_OFFSET_X
+  unset BETAMAX_SHADOW_OFFSET_Y BETAMAX_SHADOW_OPACITY BETAMAX_SHADOW_COLOR
   unset BETAMAX_OUTPUT_DIR BETAMAX_OUTPUT_FILE
 
   if [[ -f "$OUTPUT_DIR/$output_file" ]]; then
