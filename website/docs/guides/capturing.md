@@ -107,6 +107,64 @@ betamax capture --cols 120 --rows 40 vim
 4. On hotkey press: `tmux capture-pane` grabs the screen, `termshot` renders it as PNG, and optional decorations are applied
 5. On exit: the session is cleaned up and file paths are printed
 
+## Configuration
+
+Instead of passing flags every time, use config files and presets.
+
+### Config Files
+
+Betamax searches for config files in this order:
+
+1. `.betamaxrc` in the current directory (searched up to git root)
+2. `~/.config/betamax/config` (global)
+
+Format is simple `key=value` with `#` comments:
+
+```bash
+# .betamaxrc - project defaults
+theme=dracula
+shadow=true
+window-bar=colorful
+border-radius=8
+output-dir=./screenshots
+```
+
+### Named Presets
+
+Save reusable configurations as presets:
+
+```bash
+# ~/.config/betamax/presets/docs.conf
+theme=catppuccin-mocha
+shadow=true
+window-bar=colorful
+border-radius=8
+padding=10
+margin=20
+```
+
+Use with `--preset`:
+
+```bash
+betamax capture --preset docs vim
+```
+
+A config file can also reference a preset as a base:
+
+```bash
+# .betamaxrc
+preset=docs
+theme=nord    # override the preset's theme
+```
+
+### Precedence
+
+CLI flags > project `.betamaxrc` > global config > preset > defaults
+
+### Saving Raw Text
+
+Use `--save-text` (or `save-text=true` in config) to keep the raw ANSI text file alongside each PNG. Useful for debugging or re-rendering with different decorations.
+
 ## Orphaned Sessions
 
 If your terminal crashes or you force-quit during a capture session, the tmux session persists. On the next run, betamax warns you:

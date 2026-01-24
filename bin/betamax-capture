@@ -13,16 +13,18 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")/.." && pwd)"
 
-# --- Defaults ---
-CAPTURE_KEY="C-g"
-CAPTURE_KEY_DISPLAY="Ctrl+G"
-OUTPUT_DIR="./captures"
+# --- Defaults (empty = unset, real defaults applied after config loading) ---
+CAPTURE_KEY=""
+CAPTURE_KEY_DISPLAY=""
+OUTPUT_DIR=""
 COLS=""
 ROWS=""
 COMMAND=""
 TMUX_SOCKET="betamax"
 SESSION=""
 CAPTURE_HELPER=""
+PRESET=""
+SAVE_TEXT=""
 
 # Decoration defaults
 GIF_WINDOW_BAR=""
@@ -33,7 +35,7 @@ GIF_MARGIN=""
 GIF_MARGIN_COLOR=""
 GIF_PADDING=""
 GIF_PADDING_COLOR=""
-GIF_SHADOW="false"
+GIF_SHADOW=""
 GIF_SHADOW_BLUR=""
 GIF_SHADOW_OFFSET_X=""
 GIF_SHADOW_OFFSET_Y=""
@@ -59,6 +61,8 @@ Options:
   --output-dir DIR       Output directory (default: ./captures)
   --cols N               Terminal width (default: current terminal)
   --rows N               Terminal height (default: current terminal)
+  --preset NAME          Load named preset from ~/.config/betamax/presets/<name>.conf
+  --save-text            Also save the raw ANSI text file alongside the PNG
 
 Decoration Options:
   --window-bar STYLE     Window bar style: colorful, colorful_right, rings
@@ -78,9 +82,17 @@ Decoration Options:
 
   -h, --help             Show this help
 
+Config Files (key=value format, # comments):
+  .betamaxrc                 Project config (searched up to git root)
+  ~/.config/betamax/config   Global config
+  ~/.config/betamax/presets/<name>.conf   Named presets
+
+  Precedence: CLI flags > .betamaxrc > global config > preset > defaults
+
 Examples:
   betamax capture                         # capture shell session
   betamax capture vim myfile.py           # capture inside vim
+  betamax capture --preset docs htop      # use a named preset
   betamax capture --theme dracula --shadow --window-bar colorful htop
   betamax capture --key C-s vim           # use Ctrl+S instead of Ctrl+G
 EOF
@@ -109,6 +121,8 @@ parse_args() {
       --shadow-opacity) GIF_SHADOW_OPACITY="$2"; shift 2 ;;
       --shadow-color) GIF_SHADOW_COLOR="$2"; shift 2 ;;
       --theme) THEME="$2"; shift 2 ;;
+      --preset) PRESET="$2"; shift 2 ;;
+      --save-text) SAVE_TEXT="true"; shift ;;
       --) shift; COMMAND="$*"; break ;;
       -*) echo "Unknown option: $1" >&2; exit 1 ;;
       *) COMMAND="$*"; break ;;
@@ -127,6 +141,92 @@ check_dependencies() {
     echo "Install with: brew install homeport/tap/termshot" >&2
     exit 1
   fi
+}
+
+# Apply a config key=value pair (only if variable is currently unset/empty)
+apply_config_value() {
+  local key="$1" value="$2"
+  case "$key" in
+    key)              [[ -z "$CAPTURE_KEY" ]] && CAPTURE_KEY="$value" ;;
+    output-dir)       [[ -z "$OUTPUT_DIR" ]] && OUTPUT_DIR="$value" ;;
+    cols)             [[ -z "$COLS" ]] && COLS="$value" ;;
+    rows)             [[ -z "$ROWS" ]] && ROWS="$value" ;;
+    window-bar)       [[ -z "$GIF_WINDOW_BAR" ]] && GIF_WINDOW_BAR="$value" ;;
+    bar-color)        [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$value" ;;
+    border-radius)    [[ -z "$GIF_BORDER_RADIUS" ]] && GIF_BORDER_RADIUS="$value" ;;
+    margin)           [[ -z "$GIF_MARGIN" ]] && GIF_MARGIN="$value" ;;
+    margin-color)     [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$value" ;;
+    padding)          [[ -z "$GIF_PADDING" ]] && GIF_PADDING="$value" ;;
+    padding-color)    [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$value" ;;
+    shadow)           [[ -z "$GIF_SHADOW" ]] && GIF_SHADOW="$value" ;;
+    shadow-blur)      [[ -z "$GIF_SHADOW_BLUR" ]] && GIF_SHADOW_BLUR="$value" ;;
+    shadow-offset-x)  [[ -z "$GIF_SHADOW_OFFSET_X" ]] && GIF_SHADOW_OFFSET_X="$value" ;;
+    shadow-offset-y)  [[ -z "$GIF_SHADOW_OFFSET_Y" ]] && GIF_SHADOW_OFFSET_Y="$value" ;;
+    shadow-opacity)   [[ -z "$GIF_SHADOW_OPACITY" ]] && GIF_SHADOW_OPACITY="$value" ;;
+    shadow-color)     [[ -z "$GIF_SHADOW_COLOR" ]] && GIF_SHADOW_COLOR="$value" ;;
+    theme)            [[ -z "$THEME" ]] && THEME="$value" ;;
+    preset)           [[ -z "$PRESET" ]] && PRESET="$value" ;;
+    save-text)        [[ -z "$SAVE_TEXT" ]] && SAVE_TEXT="$value" ;;
+  esac
+}
+
+# Parse a config file and apply values
+parse_config_file() {
+  local file="$1"
+  [[ ! -f "$file" ]] && return
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip comments and empty lines
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    # Parse key=value (trim whitespace)
+    local key value
+    key="$(echo "${line%%=*}" | xargs)"
+    value="$(echo "${line#*=}" | xargs)"
+    [[ -n "$key" && -n "$value" ]] && apply_config_value "$key" "$value"
+  done < "$file"
+}
+
+# Search for .betamaxrc up the directory tree, then global config
+load_config_files() {
+  local found_project=false
+
+  # Search for .betamaxrc up directory tree (stop at git root or /)
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.betamaxrc" ]]; then
+      parse_config_file "$dir/.betamaxrc"
+      found_project=true
+      break
+    fi
+    # Stop at git root
+    [[ -d "$dir/.git" ]] && break
+    dir="$(dirname "$dir")"
+  done
+
+  # Global config (fills in anything still unset)
+  local global_config="${XDG_CONFIG_HOME:-$HOME/.config}/betamax/config"
+  [[ -f "$global_config" ]] && parse_config_file "$global_config"
+}
+
+# Load a named preset
+load_preset() {
+  local name="${1:-$PRESET}"
+  [[ -z "$name" ]] && return
+
+  local preset_file="${XDG_CONFIG_HOME:-$HOME/.config}/betamax/presets/${name}.conf"
+  if [[ -f "$preset_file" ]]; then
+    parse_config_file "$preset_file"
+  else
+    echo "Warning: Preset '$name' not found at $preset_file" >&2
+  fi
+}
+
+# Apply hardcoded defaults for any values still unset after config loading
+apply_defaults() {
+  CAPTURE_KEY="${CAPTURE_KEY:-C-g}"
+  OUTPUT_DIR="${OUTPUT_DIR:-./captures}"
+  GIF_SHADOW="${GIF_SHADOW:-false}"
+  SAVE_TEXT="${SAVE_TEXT:-false}"
 }
 
 resolve_theme() {
@@ -194,6 +294,7 @@ SCRIPT_DIR="$SCRIPT_DIR"
 COUNT_FILE="$count_file"
 FILES_FILE="$files_file"
 HAS_DECORATIONS="$has_decorations"
+SAVE_TEXT="$SAVE_TEXT"
 
 # Increment counter
 if [[ -f "\$COUNT_FILE" ]]; then
@@ -278,7 +379,13 @@ else
   termshot --raw-read "\$TXT_FILE" --columns "\$COLS" --filename "\$OUTPUT_DIR/\${NAME}.png" 2>/dev/null
 fi
 
-rm -f "\$TXT_FILE"
+# Save or discard intermediate text file
+if [[ "\$SAVE_TEXT" == "true" ]]; then
+  mv "\$TXT_FILE" "\$OUTPUT_DIR/\${NAME}.txt"
+  echo "\$OUTPUT_DIR/\${NAME}.txt" >> "\$FILES_FILE"
+else
+  rm -f "\$TXT_FILE"
+fi
 
 # Track captured file
 echo "\$OUTPUT_DIR/\${NAME}.png" >> "\$FILES_FILE"
@@ -350,6 +457,9 @@ compute_key_display() {
 # --- Main ---
 parse_args "$@"
 check_dependencies
+load_config_files
+load_preset
+apply_defaults
 compute_key_display
 resolve_theme
 detect_orphaned_sessions

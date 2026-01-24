@@ -207,6 +207,8 @@ If no command is given, launches your default shell.
 | `--output-dir DIR` | `./captures` | Output directory for PNGs |
 | `--cols N` | current terminal | Terminal width |
 | `--rows N` | current terminal | Terminal height |
+| `--preset NAME` | - | Load named preset from `~/.config/betamax/presets/` |
+| `--save-text` | off | Also save raw ANSI text file alongside PNG |
 | `--window-bar STYLE` | - | Window bar: `colorful`, `colorful_right`, `rings` |
 | `--bar-color COLOR` | `#1e1e1e` | Window bar background |
 | `--border-radius N` | `0` | Corner radius in pixels |
