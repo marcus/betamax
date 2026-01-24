@@ -416,6 +416,7 @@ setup_session() {
 
   # True color support
   tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" default-terminal "xterm-256color"
+  tmux -L "$TMUX_SOCKET" set-option -sa terminal-overrides ",xterm-256color:Tc"
 }
 
 run_session() {

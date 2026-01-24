@@ -154,6 +154,39 @@ betamax "neofetch" -- @sleep:500 @capture:system
 betamax "./my-tui-app" -f record.keys  # uses @record:start/@frame/@record:stop
 ```
 
+## Troubleshooting
+
+### Colors or background don't match your terminal
+
+Betamax runs a headless tmux session and renders PNGs with termshot, so it does
+not inherit your terminal app's (iTerm, Terminal.app, etc.) color profile.
+`--theme` only affects window bar/margins/padding; terminal content colors come
+from ANSI output and termshot's palette.
+
+Tips:
+- Ensure tmux advertises truecolor (24-bit) so apps render full RGB values.
+  Add to `~/.tmux.conf`:
+
+  ```tmux
+  set -g default-terminal "tmux-256color"
+  set -ga terminal-overrides ",*:Tc"
+  ```
+
+- If your app leaves the background as "default" (e.g. `Normal` has no `guibg`),
+  set an explicit background color so it doesn't depend on the terminal default.
+  In Neovim/LazyVim, check `:hi Normal` and override after the colorscheme loads:
+
+  ```lua
+  vim.api.nvim_create_autocmd("ColorScheme", {
+    callback = function()
+      local bg = "#1e1e2e"
+      vim.api.nvim_set_hl(0, "Normal", { bg = bg })
+      vim.api.nvim_set_hl(0, "NormalFloat", { bg = bg })
+      vim.api.nvim_set_hl(0, "SignColumn", { bg = bg })
+    end,
+  })
+  ```
+
 ## Usage
 
 ```
