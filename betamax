@@ -53,6 +53,96 @@ if ! command -v bc &>/dev/null; then
   exit 1
 fi
 
+# --- Config file support (same precedence model as betamax capture) ---
+
+# Apply a config key=value pair (only if variable is currently empty)
+apply_config_value() {
+  local key="$1" value="$2"
+  case "$key" in
+    window-bar)       [[ -z "$GIF_WINDOW_BAR" ]] && GIF_WINDOW_BAR="$value" ;;
+    bar-color)        [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$value" ;;
+    bar-height)       [[ -z "$GIF_BAR_HEIGHT" ]] && GIF_BAR_HEIGHT="$value" ;;
+    border-radius)    [[ -z "$GIF_BORDER_RADIUS" ]] && GIF_BORDER_RADIUS="$value" ;;
+    margin)           [[ -z "$GIF_MARGIN" ]] && GIF_MARGIN="$value" ;;
+    margin-color)     [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$value" ;;
+    padding)          [[ -z "$GIF_PADDING" ]] && GIF_PADDING="$value" ;;
+    padding-color)    [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$value" ;;
+    shadow)           [[ -z "$GIF_SHADOW" ]] && GIF_SHADOW="$value" ;;
+    shadow-blur)      [[ -z "$GIF_SHADOW_BLUR" ]] && GIF_SHADOW_BLUR="$value" ;;
+    shadow-offset-x)  [[ -z "$GIF_SHADOW_OFFSET_X" ]] && GIF_SHADOW_OFFSET_X="$value" ;;
+    shadow-offset-y)  [[ -z "$GIF_SHADOW_OFFSET_Y" ]] && GIF_SHADOW_OFFSET_Y="$value" ;;
+    shadow-opacity)   [[ -z "$GIF_SHADOW_OPACITY" ]] && GIF_SHADOW_OPACITY="$value" ;;
+    shadow-color)     [[ -z "$GIF_SHADOW_COLOR" ]] && GIF_SHADOW_COLOR="$value" ;;
+    theme)            [[ -z "$THEME" ]] && THEME="$value" ;;
+    preset)           [[ -z "$PRESET" ]] && PRESET="$value" ;;
+    output-dir)       [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "./captures" ]] && OUTPUT_DIR="$value" ;;
+  esac
+}
+
+# Parse a config file and apply values
+parse_config_file() {
+  local file="$1"
+  [[ ! -f "$file" ]] && return
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    local key value
+    key="$(echo "${line%%=*}" | xargs)"
+    value="$(echo "${line#*=}" | xargs)"
+    [[ -n "$key" && -n "$value" ]] && apply_config_value "$key" "$value"
+  done < "$file"
+}
+
+# Search for .betamaxrc up directory tree, then global config
+load_config_files() {
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -f "$dir/.betamaxrc" ]]; then
+      parse_config_file "$dir/.betamaxrc"
+      break
+    fi
+    [[ -d "$dir/.git" ]] && break
+    dir="$(dirname "$dir")"
+  done
+  local global_config="${XDG_CONFIG_HOME:-$HOME/.config}/betamax/config"
+  [[ -f "$global_config" ]] && parse_config_file "$global_config"
+}
+
+# Load a named preset
+load_preset() {
+  [[ -z "$PRESET" ]] && return
+  local preset_file="${XDG_CONFIG_HOME:-$HOME/.config}/betamax/presets/${PRESET}.conf"
+  if [[ -f "$preset_file" ]]; then
+    parse_config_file "$preset_file"
+  else
+    echo "Warning: Preset '$PRESET' not found at $preset_file" >&2
+  fi
+}
+
+# Resolve theme colors for CLI/config-set themes
+resolve_theme() {
+  [[ -z "$THEME" ]] && return
+  local python_dir="$SCRIPT_DIR/lib/python"
+  local theme_output
+  if theme_output=$(PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys
+sys.path.insert(0, '$python_dir')
+from themes import get_theme
+theme = get_theme('$THEME')
+if theme:
+    print(f'{theme.bar_color}|{theme.padding_color}|{theme.margin_color}')
+else:
+    sys.exit(1)
+" 2>/dev/null); then
+    IFS='|' read -r theme_bar theme_padding theme_margin <<< "$theme_output"
+    [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$theme_bar"
+    [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$theme_padding"
+    [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$theme_margin"
+  else
+    echo "Warning: Unknown theme '$THEME'" >&2
+  fi
+}
+
 main() {
   # Parse command line arguments
   parse_args "$@"
@@ -77,6 +167,11 @@ main() {
 
   # Process @set and @require directives
   process_directives
+
+  # Load config files and presets (fills values not set by CLI or @set)
+  load_config_files
+  load_preset
+  resolve_theme
 
   # Compute runtime values
   compute_delay_sec

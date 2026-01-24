@@ -38,6 +38,9 @@ betamax "vim /tmp/test.txt" -- i "hello world" Escape ":wq" Enter
 
 # Keys file
 betamax "myapp" -f capture-screenshot.keys
+
+# Override decorations without editing the keys file
+betamax "myapp" -f demo.keys --theme dracula --shadow --window-bar colorful
 ```
 
 ## Recording Sessions
@@ -112,7 +115,7 @@ border-radius=8
 padding=10
 ```
 
-Precedence: CLI flags > `.betamaxrc` > global config > preset > defaults.
+Precedence: CLI flags > `@set:` directives > `.betamaxrc` > global config > preset > defaults.
 
 ### Capture Options
 
@@ -527,6 +530,7 @@ Betamax is inspired by [VHS](https://github.com/charmbracelet/vhs) but takes a d
 - **tmux-based**: Uses tmux for headless operation instead of a custom terminal emulator
 - **Declarative**: Keys files are self-describing with inline settings
 - **CI-friendly**: Reproducible captures for documentation and testing
+- **Uniform styling**: Decoration options (themes, shadows, window bars) work identically across all modes — as CLI flags, `@set:` directives, or config file values
 
 ## License
 

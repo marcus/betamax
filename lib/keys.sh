@@ -212,62 +212,71 @@ process_directives() {
         fi
         ;;
       @set:window_bar:*)
-        GIF_WINDOW_BAR="${key#@set:window_bar:}"
+        [[ "$GIF_WINDOW_BAR_SET_BY_CLI" != true ]] && GIF_WINDOW_BAR="${key#@set:window_bar:}"
         ;;
       @set:bar_color:*)
-        local color="${key#@set:bar_color:}"
-        [[ "$color" != \#* ]] && color="#$color"
-        GIF_BAR_COLOR="$color"
+        if [[ "$GIF_BAR_COLOR_SET_BY_CLI" != true ]]; then
+          local color="${key#@set:bar_color:}"
+          [[ "$color" != \#* ]] && color="#$color"
+          GIF_BAR_COLOR="$color"
+        fi
         ;;
       @set:bar_height:*)
-        GIF_BAR_HEIGHT="${key#@set:bar_height:}"
+        [[ "$GIF_BAR_HEIGHT_SET_BY_CLI" != true ]] && GIF_BAR_HEIGHT="${key#@set:bar_height:}"
         ;;
       @set:border_radius:*)
-        GIF_BORDER_RADIUS="${key#@set:border_radius:}"
+        [[ "$GIF_BORDER_RADIUS_SET_BY_CLI" != true ]] && GIF_BORDER_RADIUS="${key#@set:border_radius:}"
         ;;
       @set:margin:*)
-        GIF_MARGIN="${key#@set:margin:}"
+        [[ "$GIF_MARGIN_SET_BY_CLI" != true ]] && GIF_MARGIN="${key#@set:margin:}"
         ;;
       @set:margin_color:*)
-        local color="${key#@set:margin_color:}"
-        [[ "$color" != \#* ]] && color="#$color"
-        GIF_MARGIN_COLOR="$color"
+        if [[ "$GIF_MARGIN_COLOR_SET_BY_CLI" != true ]]; then
+          local color="${key#@set:margin_color:}"
+          [[ "$color" != \#* ]] && color="#$color"
+          GIF_MARGIN_COLOR="$color"
+        fi
         ;;
       @set:padding:*)
-        GIF_PADDING="${key#@set:padding:}"
+        [[ "$GIF_PADDING_SET_BY_CLI" != true ]] && GIF_PADDING="${key#@set:padding:}"
         ;;
       @set:padding_color:*)
-        local color="${key#@set:padding_color:}"
-        [[ "$color" != \#* ]] && color="#$color"
-        GIF_PADDING_COLOR="$color"
+        if [[ "$GIF_PADDING_COLOR_SET_BY_CLI" != true ]]; then
+          local color="${key#@set:padding_color:}"
+          [[ "$color" != \#* ]] && color="#$color"
+          GIF_PADDING_COLOR="$color"
+        fi
         ;;
       @set:shadow:*)
-        GIF_SHADOW="${key#@set:shadow:}"
+        [[ "$GIF_SHADOW_SET_BY_CLI" != true ]] && GIF_SHADOW="${key#@set:shadow:}"
         ;;
       @set:shadow_blur:*)
-        GIF_SHADOW_BLUR="${key#@set:shadow_blur:}"
+        [[ "$GIF_SHADOW_BLUR_SET_BY_CLI" != true ]] && GIF_SHADOW_BLUR="${key#@set:shadow_blur:}"
         ;;
       @set:shadow_offset_x:*)
-        GIF_SHADOW_OFFSET_X="${key#@set:shadow_offset_x:}"
+        [[ "$GIF_SHADOW_OFFSET_X_SET_BY_CLI" != true ]] && GIF_SHADOW_OFFSET_X="${key#@set:shadow_offset_x:}"
         ;;
       @set:shadow_offset_y:*)
-        GIF_SHADOW_OFFSET_Y="${key#@set:shadow_offset_y:}"
+        [[ "$GIF_SHADOW_OFFSET_Y_SET_BY_CLI" != true ]] && GIF_SHADOW_OFFSET_Y="${key#@set:shadow_offset_y:}"
         ;;
       @set:shadow_opacity:*)
-        GIF_SHADOW_OPACITY="${key#@set:shadow_opacity:}"
+        [[ "$GIF_SHADOW_OPACITY_SET_BY_CLI" != true ]] && GIF_SHADOW_OPACITY="${key#@set:shadow_opacity:}"
         ;;
       @set:shadow_color:*)
-        local color="${key#@set:shadow_color:}"
-        [[ "$color" != \#* ]] && color="#$color"
-        GIF_SHADOW_COLOR="$color"
+        if [[ "$GIF_SHADOW_COLOR_SET_BY_CLI" != true ]]; then
+          local color="${key#@set:shadow_color:}"
+          [[ "$color" != \#* ]] && color="#$color"
+          GIF_SHADOW_COLOR="$color"
+        fi
         ;;
       @set:theme:*)
-        local theme_name="${key#@set:theme:}"
-        # Get theme colors from Python
-        local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        local python_dir="$script_dir/python"
-        local theme_output
-        if theme_output=$(PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+        if [[ "$THEME_SET_BY_CLI" != true ]]; then
+          local theme_name="${key#@set:theme:}"
+          # Get theme colors from Python
+          local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          local python_dir="$script_dir/python"
+          local theme_output
+          if theme_output=$(PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
 import sys
 sys.path.insert(0, '$python_dir')
 from themes import get_theme
@@ -277,13 +286,14 @@ if theme:
 else:
     sys.exit(1)
 " 2>/dev/null); then
-          # Parse theme colors (only apply if not already set)
-          IFS='|' read -r theme_bar theme_padding theme_margin <<< "$theme_output"
-          [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$theme_bar"
-          [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$theme_padding"
-          [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$theme_margin"
-        else
-          echo "Warning: Unknown theme '$theme_name'" >&2
+            # Parse theme colors (only apply if not already set by CLI)
+            IFS='|' read -r theme_bar theme_padding theme_margin <<< "$theme_output"
+            [[ "$GIF_BAR_COLOR_SET_BY_CLI" != true && -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$theme_bar"
+            [[ "$GIF_PADDING_COLOR_SET_BY_CLI" != true && -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$theme_padding"
+            [[ "$GIF_MARGIN_COLOR_SET_BY_CLI" != true && -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$theme_margin"
+          else
+            echo "Warning: Unknown theme '$theme_name'" >&2
+          fi
         fi
         ;;
       @require:*)

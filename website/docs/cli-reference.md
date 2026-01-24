@@ -31,6 +31,30 @@ betamax capture [options] [command]
 | `--cols COLS` | current terminal | Terminal width |
 | `--rows ROWS` | current terminal | Terminal height |
 | `--shell PATH` | - | Shell to use in tmux session |
+| `--validate-only` | - | Validate keys file syntax without executing |
+
+### Decoration Options
+
+These flags apply to `@capture` and `@record:stop` actions in keys files. CLI flags override `@set:` directives, which override config file values.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--window-bar STYLE` | - | Window bar: `colorful`, `colorful_right`, `rings` |
+| `--bar-color COLOR` | `#1e1e1e` | Window bar background color |
+| `--bar-height N` | `30` | Window bar height in pixels |
+| `--border-radius N` | `0` | Corner radius in pixels |
+| `--margin N` | `0` | Outer margin in pixels |
+| `--margin-color COLOR` | `#000000` | Margin color |
+| `--padding N` | `0` | Inner padding in pixels |
+| `--padding-color COLOR` | `#1e1e1e` | Padding color |
+| `--shadow` | off | Enable drop shadow |
+| `--shadow-blur N` | `15` | Shadow blur radius |
+| `--shadow-offset-x N` | `0` | Shadow horizontal offset |
+| `--shadow-offset-y N` | `8` | Shadow vertical offset |
+| `--shadow-opacity F` | `0.4` | Shadow opacity (0.0-1.0) |
+| `--shadow-color COLOR` | `#000000` | Shadow color |
+| `--theme NAME` | - | Color theme (dracula, nord, catppuccin-mocha, etc.) |
+| `--preset NAME` | - | Load preset from `~/.config/betamax/presets/` |
 
 ## Examples
 
@@ -88,6 +112,15 @@ betamax "neofetch" -o ./screenshots -- @sleep:500 @capture:system
 
 ```bash
 betamax "ls --color" -c -- @sleep:100
+```
+
+### Decorated Playback
+
+Override decorations from the command line without editing the keys file:
+
+```bash
+betamax "myapp" -f demo.keys --theme dracula --shadow --window-bar colorful
+betamax "myapp" -f demo.keys --border-radius 10 --padding 10 --margin 20
 ```
 
 ## Exit Codes

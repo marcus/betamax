@@ -34,6 +34,24 @@ Options:
   --shell PATH          Shell to use in tmux session
   --validate-only       Validate keys file syntax without executing
 
+Decoration Options (apply to @capture and @record in keys files):
+  --window-bar STYLE     Window bar: colorful, colorful_right, rings
+  --bar-color COLOR      Bar background color (default: #1e1e1e)
+  --bar-height N         Bar height in pixels (default: 30)
+  --border-radius N      Corner radius in pixels (default: 0)
+  --margin N             Outer margin in pixels (default: 0)
+  --margin-color COLOR   Margin color (default: #000000)
+  --padding N            Inner padding in pixels (default: 0)
+  --padding-color COLOR  Padding color (default: #1e1e1e)
+  --shadow               Enable drop shadow
+  --shadow-blur N        Shadow blur radius (default: 15)
+  --shadow-offset-x N    Shadow X offset (default: 0)
+  --shadow-offset-y N    Shadow Y offset (default: 8)
+  --shadow-opacity F     Shadow opacity 0.0-1.0 (default: 0.4)
+  --shadow-color COLOR   Shadow color (default: #000000)
+  --theme NAME           Color theme (dracula, nord, catppuccin-mocha, etc.)
+  --preset NAME          Load preset from ~/.config/betamax/presets/
+
 Keys File Format (.keys):
   Declarative scripts with settings, actions, and keystrokes.
 
@@ -55,7 +73,7 @@ Config Files (key=value, # comments):
   ~/.config/betamax/config                  Global config
   ~/.config/betamax/presets/<name>.conf     Named presets (--preset NAME)
 
-  Precedence: CLI flags > .betamaxrc > global config > preset > defaults
+  Precedence: CLI flags > @set directives > .betamaxrc > global > preset > defaults
 
 Dependencies:
   tmux       Required    Headless terminal sessions
@@ -72,6 +90,7 @@ Examples:
   betamax --validate-only vim -f demo.keys
   betamax -k htop -- q                    # keep session for inspection
   betamax -c -d 100 bash -- ls Enter      # capture final output
+  betamax myapp -f demo.keys --theme dracula --shadow --window-bar colorful
 EOF
 }
 
@@ -131,6 +150,85 @@ parse_args() {
       --validate-only)
         VALIDATE_ONLY=true
         shift
+        ;;
+      --window-bar)
+        GIF_WINDOW_BAR="$2"
+        GIF_WINDOW_BAR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --bar-color)
+        GIF_BAR_COLOR="$2"
+        GIF_BAR_COLOR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --bar-height)
+        GIF_BAR_HEIGHT="$2"
+        GIF_BAR_HEIGHT_SET_BY_CLI=true
+        shift 2
+        ;;
+      --border-radius)
+        GIF_BORDER_RADIUS="$2"
+        GIF_BORDER_RADIUS_SET_BY_CLI=true
+        shift 2
+        ;;
+      --margin)
+        GIF_MARGIN="$2"
+        GIF_MARGIN_SET_BY_CLI=true
+        shift 2
+        ;;
+      --margin-color)
+        GIF_MARGIN_COLOR="$2"
+        GIF_MARGIN_COLOR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --padding)
+        GIF_PADDING="$2"
+        GIF_PADDING_SET_BY_CLI=true
+        shift 2
+        ;;
+      --padding-color)
+        GIF_PADDING_COLOR="$2"
+        GIF_PADDING_COLOR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --shadow)
+        GIF_SHADOW=true
+        GIF_SHADOW_SET_BY_CLI=true
+        shift
+        ;;
+      --shadow-blur)
+        GIF_SHADOW_BLUR="$2"
+        GIF_SHADOW_BLUR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --shadow-offset-x)
+        GIF_SHADOW_OFFSET_X="$2"
+        GIF_SHADOW_OFFSET_X_SET_BY_CLI=true
+        shift 2
+        ;;
+      --shadow-offset-y)
+        GIF_SHADOW_OFFSET_Y="$2"
+        GIF_SHADOW_OFFSET_Y_SET_BY_CLI=true
+        shift 2
+        ;;
+      --shadow-opacity)
+        GIF_SHADOW_OPACITY="$2"
+        GIF_SHADOW_OPACITY_SET_BY_CLI=true
+        shift 2
+        ;;
+      --shadow-color)
+        GIF_SHADOW_COLOR="$2"
+        GIF_SHADOW_COLOR_SET_BY_CLI=true
+        shift 2
+        ;;
+      --theme)
+        THEME="$2"
+        THEME_SET_BY_CLI=true
+        shift 2
+        ;;
+      --preset)
+        PRESET="$2"
+        shift 2
         ;;
       --)
         shift

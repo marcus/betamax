@@ -36,6 +36,24 @@ RECORDING_COLS=""
 GIF_FRAME_DELAY_MS=200  # Time each frame displays in GIF (default: 200ms)
 GIF_PLAYBACK_SPEED=1.0  # Playback speed multiplier (0.25-4.0, default: 1.0)
 
+# Decoration CLI override sentinels
+GIF_WINDOW_BAR_SET_BY_CLI=false
+GIF_BAR_COLOR_SET_BY_CLI=false
+GIF_BAR_HEIGHT_SET_BY_CLI=false
+GIF_BORDER_RADIUS_SET_BY_CLI=false
+GIF_MARGIN_SET_BY_CLI=false
+GIF_MARGIN_COLOR_SET_BY_CLI=false
+GIF_PADDING_SET_BY_CLI=false
+GIF_PADDING_COLOR_SET_BY_CLI=false
+GIF_SHADOW_SET_BY_CLI=false
+GIF_SHADOW_BLUR_SET_BY_CLI=false
+GIF_SHADOW_OFFSET_X_SET_BY_CLI=false
+GIF_SHADOW_OFFSET_Y_SET_BY_CLI=false
+GIF_SHADOW_OPACITY_SET_BY_CLI=false
+GIF_SHADOW_COLOR_SET_BY_CLI=false
+THEME_SET_BY_CLI=false
+PRESET=""
+
 # tmux socket name (isolates betamax sessions)
 TMUX_SOCKET="betamax"
 

@@ -417,6 +417,19 @@ Use `@source` to share decoration settings across multiple recordings:
 
 This keeps your recordings visually consistent and makes it easy to update the theme across all demos.
 
+### CLI Decoration Overrides
+
+You can override any decoration setting from the command line without editing the keys file:
+
+```bash
+# Keys file has @set:theme:nord, but CLI wins:
+betamax "myapp" -f demo.keys --theme dracula --shadow --window-bar colorful
+```
+
+Precedence: CLI flags > `@set:` directives > `.betamaxrc` > global config > preset > defaults.
+
+This is useful for testing different visual styles or when the same keys file is used in different contexts (e.g., light theme for docs, dark theme for presentations).
+
 ## Loop Animations with @repeat
 
 The `@repeat:N` and `@end` directives create loops for repetitive frame sequences. This is useful for animations that cycle through states.
