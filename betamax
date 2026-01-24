@@ -25,6 +25,18 @@ if [[ "${1:-}" == "record" ]]; then
   exec "$RECORD_SCRIPT" "$@"
 fi
 
+# Check for capture subcommand before sourcing modules
+if [[ "${1:-}" == "capture" ]]; then
+  CAPTURE_SCRIPT="$SCRIPT_DIR/bin/betamax-capture"
+  if [[ ! -x "$CAPTURE_SCRIPT" ]]; then
+    echo "Error: betamax-capture not found or not executable" >&2
+    echo "Expected location: $CAPTURE_SCRIPT" >&2
+    exit 1
+  fi
+  shift
+  exec "$CAPTURE_SCRIPT" "$@"
+fi
+
 # Source modules
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/args.sh"

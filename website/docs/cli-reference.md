@@ -13,6 +13,7 @@ Complete reference for the Betamax command-line interface.
 betamax [options] <command> -- <key1> <key2> ...
 betamax [options] <command> -f <keys-file>
 betamax record [options] <command>
+betamax capture [options] [command]
 ```
 
 ## Options
@@ -184,8 +185,85 @@ Escape
 Enter
 ```
 
+---
+
+## `betamax capture`
+
+Capture PNG screenshots of any TUI interactively. Binds a hotkey that works regardless of what application is running.
+
+### Synopsis
+
+```
+betamax capture [options] [command]
+```
+
+If no command is given, launches your default shell.
+
+### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--key KEY` | `C-g` | Capture hotkey (tmux key format) |
+| `--output-dir DIR` | `./captures` | Output directory for PNGs |
+| `--cols N` | current terminal | Terminal width |
+| `--rows N` | current terminal | Terminal height |
+| `--window-bar STYLE` | - | Window bar: `colorful`, `colorful_right`, `rings` |
+| `--bar-color COLOR` | `#1e1e1e` | Window bar background |
+| `--border-radius N` | `0` | Corner radius in pixels |
+| `--margin N` | `0` | Outer margin in pixels |
+| `--margin-color COLOR` | `#000000` | Margin color |
+| `--padding N` | `0` | Inner padding in pixels |
+| `--padding-color COLOR` | `#1e1e1e` | Padding color |
+| `--shadow` | off | Enable drop shadow |
+| `--theme NAME` | - | Apply a color theme |
+
+### Capture Workflow
+
+1. **Start**: Launch with `betamax capture [command]`
+2. **Interact**: Use your application normally
+3. **Capture**: Press `Ctrl+G` (or custom `--key`) to screenshot
+4. **Finish**: Exit the command normally - file paths are printed
+
+### Examples
+
+#### Basic Capture
+
+```bash
+betamax capture vim myfile.py
+```
+
+#### Decorated Screenshots
+
+```bash
+betamax capture --theme dracula --shadow --window-bar colorful htop
+```
+
+#### Custom Hotkey
+
+```bash
+betamax capture --key C-s vim
+```
+
+#### Shell Session
+
+```bash
+betamax capture
+# Run commands, press Ctrl+G to capture, type 'exit' when done
+```
+
+### Recovery
+
+Orphaned sessions (from crashes) are detected on startup. Clean up with:
+
+```bash
+tmux -L betamax kill-session -t <name>
+```
+
+---
+
 ## See Also
 
 - [Keys File Format](/docs/keys-file-format) - Detailed reference for keys file syntax
 - [Recording Guide](/docs/guides/recording) - In-depth guide to recording sessions
+- [Capturing Screenshots](/docs/guides/capturing) - In-depth guide to interactive capture
 - [Examples](/docs/examples) - Practical examples for common use cases

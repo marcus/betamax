@@ -1,0 +1,367 @@
+#!/bin/bash
+# betamax-capture - Interactive TUI screenshot capture
+# Launches a tmux session with a hotkey bound to capture the terminal as PNG
+
+set -e
+
+# Resolve script directory (follows symlinks)
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+
+# --- Defaults ---
+CAPTURE_KEY="C-g"
+CAPTURE_KEY_DISPLAY="Ctrl+G"
+OUTPUT_DIR="./captures"
+COLS=""
+ROWS=""
+COMMAND=""
+TMUX_SOCKET="betamax"
+SESSION=""
+CAPTURE_HELPER=""
+
+# Decoration defaults
+GIF_WINDOW_BAR=""
+GIF_BAR_COLOR=""
+GIF_BAR_HEIGHT=""
+GIF_BORDER_RADIUS=""
+GIF_MARGIN=""
+GIF_MARGIN_COLOR=""
+GIF_PADDING=""
+GIF_PADDING_COLOR=""
+GIF_SHADOW="false"
+GIF_SHADOW_BLUR=""
+GIF_SHADOW_OFFSET_X=""
+GIF_SHADOW_OFFSET_Y=""
+GIF_SHADOW_OPACITY=""
+GIF_SHADOW_COLOR=""
+THEME=""
+
+# --- Functions ---
+
+show_help() {
+  cat << 'EOF'
+betamax capture - Interactive TUI screenshot capture
+
+Usage:
+  betamax capture [options] [command]
+
+Launches an interactive session and binds a hotkey to capture the terminal
+state as a decorated PNG at any time. Press the hotkey while in any TUI
+(vim, htop, etc.) to take a screenshot. Exit the command to finish.
+
+Options:
+  --key KEY              Capture hotkey in tmux format (default: C-g / Ctrl+G)
+  --output-dir DIR       Output directory (default: ./captures)
+  --cols N               Terminal width (default: current terminal)
+  --rows N               Terminal height (default: current terminal)
+
+Decoration Options:
+  --window-bar STYLE     Window bar style: colorful, colorful_right, rings
+  --bar-color COLOR      Window bar background color (default: #1e1e1e)
+  --border-radius N      Corner radius in pixels (default: 0)
+  --margin N             Outer margin in pixels (default: 0)
+  --margin-color COLOR   Margin color (default: #000000)
+  --padding N            Inner padding in pixels (default: 0)
+  --padding-color COLOR  Padding color (default: #1e1e1e)
+  --shadow               Enable drop shadow
+  --shadow-blur N        Shadow blur radius (default: 15)
+  --shadow-offset-x N    Shadow X offset (default: 0)
+  --shadow-offset-y N    Shadow Y offset (default: 8)
+  --shadow-opacity F     Shadow opacity 0.0-1.0 (default: 0.4)
+  --shadow-color COLOR   Shadow color (default: #000000)
+  --theme NAME           Apply a color theme (dracula, nord, catppuccin-mocha, etc.)
+
+  -h, --help             Show this help
+
+Examples:
+  betamax capture                         # capture shell session
+  betamax capture vim myfile.py           # capture inside vim
+  betamax capture --theme dracula --shadow --window-bar colorful htop
+  betamax capture --key C-s vim           # use Ctrl+S instead of Ctrl+G
+EOF
+  exit 0
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) show_help ;;
+      --key) CAPTURE_KEY="$2"; shift 2 ;;
+      --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+      --cols) COLS="$2"; shift 2 ;;
+      --rows) ROWS="$2"; shift 2 ;;
+      --window-bar) GIF_WINDOW_BAR="$2"; shift 2 ;;
+      --bar-color) GIF_BAR_COLOR="$2"; shift 2 ;;
+      --border-radius) GIF_BORDER_RADIUS="$2"; shift 2 ;;
+      --margin) GIF_MARGIN="$2"; shift 2 ;;
+      --margin-color) GIF_MARGIN_COLOR="$2"; shift 2 ;;
+      --padding) GIF_PADDING="$2"; shift 2 ;;
+      --padding-color) GIF_PADDING_COLOR="$2"; shift 2 ;;
+      --shadow) GIF_SHADOW="true"; shift ;;
+      --shadow-blur) GIF_SHADOW_BLUR="$2"; shift 2 ;;
+      --shadow-offset-x) GIF_SHADOW_OFFSET_X="$2"; shift 2 ;;
+      --shadow-offset-y) GIF_SHADOW_OFFSET_Y="$2"; shift 2 ;;
+      --shadow-opacity) GIF_SHADOW_OPACITY="$2"; shift 2 ;;
+      --shadow-color) GIF_SHADOW_COLOR="$2"; shift 2 ;;
+      --theme) THEME="$2"; shift 2 ;;
+      --) shift; COMMAND="$*"; break ;;
+      -*) echo "Unknown option: $1" >&2; exit 1 ;;
+      *) COMMAND="$*"; break ;;
+    esac
+  done
+}
+
+check_dependencies() {
+  if ! command -v tmux &>/dev/null; then
+    echo "Error: tmux is required for betamax capture" >&2
+    echo "Install with: brew install tmux (macOS) or apt install tmux (Linux)" >&2
+    exit 1
+  fi
+  if ! command -v termshot &>/dev/null; then
+    echo "Error: termshot is required for PNG capture" >&2
+    echo "Install with: brew install homeport/tap/termshot" >&2
+    exit 1
+  fi
+}
+
+resolve_theme() {
+  [[ -z "$THEME" ]] && return
+
+  local python_dir="$SCRIPT_DIR/lib/python"
+  local theme_output
+  if theme_output=$(PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys
+sys.path.insert(0, '$python_dir')
+from themes import get_theme
+theme = get_theme('$THEME')
+if theme:
+    print(f'{theme.bar_color}|{theme.padding_color}|{theme.margin_color}')
+else:
+    sys.exit(1)
+" 2>/dev/null); then
+    IFS='|' read -r theme_bar theme_padding theme_margin <<< "$theme_output"
+    [[ -z "$GIF_BAR_COLOR" ]] && GIF_BAR_COLOR="$theme_bar"
+    [[ -z "$GIF_PADDING_COLOR" ]] && GIF_PADDING_COLOR="$theme_padding"
+    [[ -z "$GIF_MARGIN_COLOR" ]] && GIF_MARGIN_COLOR="$theme_margin"
+  else
+    echo "Warning: Unknown theme '$THEME'" >&2
+  fi
+}
+
+detect_orphaned_sessions() {
+  local orphans
+  orphans=$(tmux -L "$TMUX_SOCKET" list-sessions -F '#{session_name}' 2>/dev/null | grep '^betamax-capture-' || true)
+  if [[ -n "$orphans" ]]; then
+    echo "Warning: Found orphaned capture session(s):" >&2
+    echo "$orphans" | while read -r s; do
+      echo "  $s" >&2
+    done
+    echo "Clean up with: tmux -L betamax kill-session -t <name>" >&2
+    echo ""
+  fi
+}
+
+generate_capture_helper() {
+  CAPTURE_HELPER="/tmp/betamax-capture-$$.sh"
+  local count_file="/tmp/betamax-capture-$$-count"
+  local files_file="/tmp/betamax-capture-$$-files"
+
+  # Determine if decorations are needed
+  local has_decorations=false
+  [[ -n "$GIF_WINDOW_BAR" && "$GIF_WINDOW_BAR" != "none" ]] && has_decorations=true
+  [[ -n "$GIF_BORDER_RADIUS" && "$GIF_BORDER_RADIUS" -gt 0 ]] 2>/dev/null && has_decorations=true
+  [[ -n "$GIF_MARGIN" && "$GIF_MARGIN" -gt 0 ]] 2>/dev/null && has_decorations=true
+  [[ -n "$GIF_PADDING" && "$GIF_PADDING" -gt 0 ]] 2>/dev/null && has_decorations=true
+  [[ "$GIF_SHADOW" == "true" ]] && has_decorations=true
+
+  # Resolve absolute output dir
+  local abs_output_dir
+  abs_output_dir="$(cd "$(dirname "$OUTPUT_DIR")" 2>/dev/null && pwd)/$(basename "$OUTPUT_DIR")" || abs_output_dir="$(pwd)/$OUTPUT_DIR"
+
+  cat > "$CAPTURE_HELPER" << HELPEREOF
+#!/bin/bash
+# Auto-generated capture helper for betamax capture session $$
+
+TMUX_SOCKET="$TMUX_SOCKET"
+SESSION="$SESSION"
+OUTPUT_DIR="$abs_output_dir"
+SCRIPT_DIR="$SCRIPT_DIR"
+COUNT_FILE="$count_file"
+FILES_FILE="$files_file"
+HAS_DECORATIONS="$has_decorations"
+
+# Increment counter
+if [[ -f "\$COUNT_FILE" ]]; then
+  COUNT=\$(cat "\$COUNT_FILE")
+  ((COUNT++))
+else
+  COUNT=1
+fi
+echo "\$COUNT" > "\$COUNT_FILE"
+
+# Generate filename
+TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+NAME="capture_\${TIMESTAMP}_\${COUNT}"
+
+mkdir -p "\$OUTPUT_DIR"
+TXT_FILE="/tmp/betamax_cap_\$\$_\${COUNT}.txt"
+
+# Capture pane content with ANSI codes
+tmux -L "\$TMUX_SOCKET" capture-pane -t "\$SESSION" -e -p > "\$TXT_FILE"
+
+# Get pane width
+COLS=\$(tmux -L "\$TMUX_SOCKET" display-message -t "\$SESSION" -p '#{pane_width}')
+
+if [[ "\$HAS_DECORATIONS" == "true" ]]; then
+  RAW_PNG="/tmp/betamax_cap_raw_\$\$_\${COUNT}.png"
+  termshot --raw-read "\$TXT_FILE" --columns "\$COLS" --filename "\$RAW_PNG" 2>/dev/null
+
+  BETAMAX_RAW_PNG="\$RAW_PNG" \\
+  BETAMAX_OUTPUT_PNG="\$OUTPUT_DIR/\${NAME}.png" \\
+  BETAMAX_WINDOW_BAR="${GIF_WINDOW_BAR:-}" \\
+  BETAMAX_BAR_COLOR="${GIF_BAR_COLOR:-#1e1e1e}" \\
+  BETAMAX_BAR_HEIGHT="${GIF_BAR_HEIGHT:-30}" \\
+  BETAMAX_BORDER_RADIUS="${GIF_BORDER_RADIUS:-0}" \\
+  BETAMAX_MARGIN="${GIF_MARGIN:-0}" \\
+  BETAMAX_MARGIN_COLOR="${GIF_MARGIN_COLOR:-#000000}" \\
+  BETAMAX_PADDING="${GIF_PADDING:-0}" \\
+  BETAMAX_PADDING_COLOR="${GIF_PADDING_COLOR:-#1e1e1e}" \\
+  BETAMAX_SHADOW="${GIF_SHADOW:-false}" \\
+  BETAMAX_SHADOW_BLUR="${GIF_SHADOW_BLUR:-15}" \\
+  BETAMAX_SHADOW_OFFSET_X="${GIF_SHADOW_OFFSET_X:-0}" \\
+  BETAMAX_SHADOW_OFFSET_Y="${GIF_SHADOW_OFFSET_Y:-8}" \\
+  BETAMAX_SHADOW_OPACITY="${GIF_SHADOW_OPACITY:-0.4}" \\
+  BETAMAX_SHADOW_COLOR="${GIF_SHADOW_COLOR:-#000000}" \\
+  PYTHONPATH="\$SCRIPT_DIR/lib/python:\$PYTHONPATH" python3 -c "
+import sys, os
+sys.path.insert(0, os.environ.get('PYTHONPATH', '').split(':')[0])
+from ffmpeg_pipeline import apply_decorations_to_png, DecorationOptions
+
+def get_env_int(name, default):
+    val = os.environ.get(name, '')
+    try: return int(val) if val else default
+    except ValueError: return default
+
+def get_env_float(name, default):
+    val = os.environ.get(name, '')
+    try: return float(val) if val else default
+    except ValueError: return default
+
+window_bar = os.environ.get('BETAMAX_WINDOW_BAR', '')
+options = DecorationOptions(
+    window_bar_style=window_bar if window_bar and window_bar != 'none' else None,
+    bar_color=os.environ.get('BETAMAX_BAR_COLOR', '') or '#1e1e1e',
+    bar_height=get_env_int('BETAMAX_BAR_HEIGHT', 30),
+    border_radius=get_env_int('BETAMAX_BORDER_RADIUS', 0),
+    margin=get_env_int('BETAMAX_MARGIN', 0),
+    margin_color=os.environ.get('BETAMAX_MARGIN_COLOR', '') or '#000000',
+    padding=get_env_int('BETAMAX_PADDING', 0),
+    padding_color=os.environ.get('BETAMAX_PADDING_COLOR', '') or '#1e1e1e',
+    shadow_enabled=os.environ.get('BETAMAX_SHADOW', 'false').lower() == 'true',
+    shadow_blur=get_env_int('BETAMAX_SHADOW_BLUR', 15),
+    shadow_offset_x=get_env_int('BETAMAX_SHADOW_OFFSET_X', 0),
+    shadow_offset_y=get_env_int('BETAMAX_SHADOW_OFFSET_Y', 8),
+    shadow_opacity=get_env_float('BETAMAX_SHADOW_OPACITY', 0.4),
+    shadow_color=os.environ.get('BETAMAX_SHADOW_COLOR', '') or '#000000',
+)
+if not apply_decorations_to_png(os.environ['BETAMAX_RAW_PNG'], os.environ['BETAMAX_OUTPUT_PNG'], options):
+    sys.exit(1)
+" 2>/dev/null
+
+  rm -f "\$RAW_PNG"
+else
+  termshot --raw-read "\$TXT_FILE" --columns "\$COLS" --filename "\$OUTPUT_DIR/\${NAME}.png" 2>/dev/null
+fi
+
+rm -f "\$TXT_FILE"
+
+# Track captured file
+echo "\$OUTPUT_DIR/\${NAME}.png" >> "\$FILES_FILE"
+
+# Visual feedback
+tmux -L "\$TMUX_SOCKET" display-message -t "\$SESSION" "Captured: \${NAME}.png (#\${COUNT})"
+HELPEREOF
+
+  chmod +x "$CAPTURE_HELPER"
+}
+
+setup_session() {
+  # Create detached session with command
+  tmux -L "$TMUX_SOCKET" new-session -d -s "$SESSION" -x "$COLS" -y "$ROWS" "$COMMAND"
+
+  # Hide status bar for clean look
+  tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" status off
+
+  # Set prefix to unlikely key to avoid conflicts
+  tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" prefix C-]
+
+  # Bind capture hotkey (no prefix required)
+  tmux -L "$TMUX_SOCKET" bind-key -n "$CAPTURE_KEY" run-shell "$CAPTURE_HELPER"
+
+  # Configure feedback display
+  tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" display-time 1500
+  tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" message-style "fg=green,bg=default,bold"
+
+  # True color support
+  tmux -L "$TMUX_SOCKET" set-option -t "$SESSION" default-terminal "xterm-256color"
+}
+
+run_session() {
+  echo "betamax: Press $CAPTURE_KEY_DISPLAY to capture. Exit command to finish."
+  tmux -L "$TMUX_SOCKET" attach-session -t "$SESSION"
+}
+
+report_captures() {
+  local files_file="/tmp/betamax-capture-$$-files"
+  echo ""
+  if [[ -f "$files_file" ]]; then
+    local count
+    count=$(wc -l < "$files_file" | tr -d ' ')
+    echo "Captured $count screenshot(s):"
+    while IFS= read -r file; do
+      echo "  $file"
+    done < "$files_file"
+  else
+    echo "No captures taken."
+  fi
+}
+
+cleanup() {
+  tmux -L "$TMUX_SOCKET" kill-session -t "$SESSION" 2>/dev/null || true
+  rm -f "/tmp/betamax-capture-$$-count"
+  rm -f "/tmp/betamax-capture-$$-files"
+  rm -f "/tmp/betamax-capture-$$.sh"
+}
+
+# Compute display name for capture key
+compute_key_display() {
+  CAPTURE_KEY_DISPLAY="$CAPTURE_KEY"
+  case "$CAPTURE_KEY" in
+    C-*) CAPTURE_KEY_DISPLAY="Ctrl+${CAPTURE_KEY#C-}" ;;
+    M-*) CAPTURE_KEY_DISPLAY="Alt+${CAPTURE_KEY#M-}" ;;
+  esac
+}
+
+# --- Main ---
+parse_args "$@"
+check_dependencies
+compute_key_display
+resolve_theme
+detect_orphaned_sessions
+
+COLS="${COLS:-$(tput cols 2>/dev/null || echo 80)}"
+ROWS="${ROWS:-$(tput lines 2>/dev/null || echo 24)}"
+COMMAND="${COMMAND:-$SHELL}"
+SESSION="betamax-capture-$$"
+
+trap cleanup EXIT
+
+generate_capture_helper
+setup_session
+run_session
+report_captures
