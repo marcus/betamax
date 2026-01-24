@@ -3,7 +3,10 @@
 
 show_help() {
   cat << 'EOF'
-betamax - Terminal session recorder for TUI apps
+betamax - Reproducible terminal screenshots and GIF demos
+
+Runs commands in a headless tmux session, sends keystrokes with controlled
+timing, and captures output as PNG, HTML, text, or animated GIF.
 
 Usage:
   betamax [options] <command> -- <key1> <key2> ...
@@ -29,9 +32,46 @@ Options:
   --cols COLS           Terminal width (default: current terminal)
   --rows ROWS           Terminal height (default: current terminal)
   --shell PATH          Shell to use in tmux session
-  --validate-only       Validate keys file and exit (no execution)
+  --validate-only       Validate keys file syntax without executing
 
-See README.md for full documentation
+Keys File Format (.keys):
+  Declarative scripts with settings, actions, and keystrokes.
+
+  Settings:       @set:cols:80  @set:delay:100  @set:theme:dracula
+                  @set:window_bar:colorful  @set:shadow:true
+                  @set:border_radius:10  @set:margin:20  @set:padding:10
+                  @set:gif_delay:200  @set:speed:1.5  @set:loop_offset:500
+  Actions:        @sleep:1000  @wait:pattern  @pause  @source:other.keys
+                  @capture:name.png  @capture:name.html  @capture:name.txt
+                  @record:start  @record:stop:output.gif  @frame
+                  @record:pause  @record:resume  @hide  @show
+                  @repeat:3 ... @end  @require:dependency
+  Keys:           Enter  Escape  Tab  Space  BSpace  Up  Down  Left  Right
+                  C-c (Ctrl)  M-x (Alt)  F1-F12  Home  End  PPage  NPage  DC
+  Per-key delay:  key@MS  (e.g. Enter@1000)
+
+Config Files (key=value, # comments):
+  .betamaxrc                               Project config (searched up to git root)
+  ~/.config/betamax/config                  Global config
+  ~/.config/betamax/presets/<name>.conf     Named presets (--preset NAME)
+
+  Precedence: CLI flags > .betamaxrc > global config > preset > defaults
+
+Dependencies:
+  tmux       Required    Headless terminal sessions
+  bc         Required    Timing calculations
+  python3    Required    Recording and GIF generation
+  termshot   For PNG     brew install homeport/tap/termshot
+  aha        For HTML    brew install aha
+  ffmpeg     For GIF     brew install ffmpeg
+  Pillow     For decor   pip install Pillow
+
+Examples:
+  betamax vim test.txt -- i Hello Escape :wq Enter
+  betamax vim test.txt -f demo.keys
+  betamax --validate-only vim -f demo.keys
+  betamax -k htop -- q                    # keep session for inspection
+  betamax -c -d 100 bash -- ls Enter      # capture final output
 EOF
 }
 
