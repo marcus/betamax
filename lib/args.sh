@@ -9,10 +9,13 @@ Usage:
   betamax [options] <command> -- <key1> <key2> ...
   betamax [options] <command> -f <keys-file>
   betamax record [options] <command>
+  betamax capture [options] [command]
 
 Subcommands:
   record    Record an interactive session to a .keys file
             Run 'betamax record --help' for recording options
+  capture   Capture TUI screenshots interactively with a hotkey
+            Run 'betamax capture --help' for capture options
 
 Options:
   -s, --session NAME    Session name (default: betamax)

@@ -65,6 +65,16 @@ const FeatureList: FeatureItem[] = [
     ),
   },
   {
+    title: 'Screenshot Capture',
+    icon: 'icon-camera',
+    description: (
+      <>
+        Capture TUI screenshots with <code>betamax capture</code>. Press a hotkey
+        anytime during vim, htop, or any TUI to take a PNG.
+      </>
+    ),
+  },
+  {
     title: 'Multiple Output Formats',
     icon: 'icon-layers',
     description: (
@@ -130,7 +140,10 @@ brew install ffmpeg                  # for GIF`}
           <div className="col col--6">
             <h3>Basic Usage</h3>
             <CodeBlock language="bash">
-{`# Record your terminal session interactively
+{`# Capture TUI screenshots interactively
+betamax capture vim myfile.py  # Ctrl+G to screenshot
+
+# Record your terminal session
 betamax record -o demo.keys vim test.txt
 
 # Play back with GIF output

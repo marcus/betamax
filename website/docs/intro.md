@@ -49,7 +49,19 @@ betamax --help
 
 ![betamax help](/img/demos/betamax_help.png)
 
-## Your First Recording
+## Your First Capture
+
+### Interactive Screenshot
+
+Capture a TUI screenshot at any moment with a hotkey:
+
+```bash
+betamax capture vim myfile.py
+```
+
+Press `Ctrl+G` at any time to take a PNG screenshot. Exit vim normally and betamax prints the file paths. Supports themes, shadows, and window bars via flags or config files.
+
+## Recording Sessions
 
 ### Interactive Recording
 
@@ -89,4 +101,6 @@ betamax "htop" -w "CPU" -- @sleep:1000 @capture:htop.png q
 
 ## Next Steps
 
-See the [CLI Reference](/docs/cli-reference) for all options and the keys file format.
+- [Capturing Screenshots](/docs/guides/capturing) - Interactive TUI screenshot guide
+- [Recording Sessions](/docs/guides/recording) - In-depth recording guide
+- [CLI Reference](/docs/cli-reference) - All options and keys file format

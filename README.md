@@ -2,9 +2,11 @@
 
 ![Betamax](betamax.png)
 
-Terminal session recorder for TUI apps. It uses tmux for headless operation of any terminal program.
+Terminal session recorder and screenshot tool for TUI apps. Uses tmux for headless operation of any terminal program.
 
 📖 **[Documentation](https://marcus.github.io/betamax/)** — Full docs, examples, and guides
+
+![README in vim](./captures/readme-vim.png)
 
 ![Demo](gradient_wave.gif)
 
@@ -74,6 +76,59 @@ The generated `.keys` file can be replayed with `betamax` to produce consistent 
 | `--max-duration SEC` | Max recording duration (default: 300s = 5 min) |
 | `--cols / --rows` | Terminal dimensions |
 
+## Capturing Screenshots
+
+Capture PNG screenshots of any TUI interactively with a hotkey:
+
+```bash
+# Basic capture - press Ctrl+G anytime to screenshot
+betamax capture vim myfile.py
+
+# With decorations
+betamax capture --theme dracula --shadow --window-bar colorful htop
+
+# Custom hotkey and output directory
+betamax capture --key C-s --output-dir ./screenshots vim
+```
+
+Uses a transparent tmux session with `bind-key -n` to intercept the hotkey before it reaches your TUI. Works with vim, htop, or any terminal application.
+
+### Configuration
+
+Supports config files and presets to avoid repeating flags:
+
+```bash
+# .betamaxrc (project) or ~/.config/betamax/config (global)
+preset=docs
+theme=dracula
+shadow=true
+window-bar=colorful
+
+# ~/.config/betamax/presets/docs.conf
+theme=catppuccin-mocha
+shadow=true
+window-bar=colorful
+border-radius=8
+padding=10
+```
+
+Precedence: CLI flags > `.betamaxrc` > global config > preset > defaults.
+
+### Capture Options
+
+| Option | Description |
+|--------|-------------|
+| `--key KEY` | Capture hotkey (default: C-g / Ctrl+G) |
+| `--output-dir DIR` | Output directory (default: ./captures) |
+| `--preset NAME` | Load named preset from ~/.config/betamax/presets/ |
+| `--save-text` | Also save raw ANSI text file alongside PNG |
+| `--cols / --rows` | Terminal dimensions |
+| `--theme NAME` | Color theme (dracula, nord, catppuccin-mocha, etc.) |
+| `--window-bar STYLE` | Window bar: colorful, colorful_right, rings |
+| `--shadow` | Enable drop shadow |
+| `--border-radius N` | Rounded corners |
+| `--padding N` / `--margin N` | Spacing |
+
 ## Output Formats
 
 Betamax can capture terminal output in multiple formats:
@@ -104,6 +159,8 @@ betamax "./my-tui-app" -f record.keys  # uses @record:start/@frame/@record:stop
 ```
 betamax [options] <command> -- <key1> <key2> ...
 betamax [options] <command> -f <keys-file>
+betamax record [options] <command>
+betamax capture [options] [command]
 ```
 
 ### Options
