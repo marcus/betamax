@@ -308,14 +308,17 @@ class DecorationPipeline:
         if not self.options.shadow_enabled:
             return False
 
-        # Calculate shadow canvas size
+        # Calculate shadow canvas size with per-side padding
         blur = self.options.shadow_blur
         ox = self.options.shadow_offset_x
         oy = self.options.shadow_offset_y
-        padding = blur * 2 + max(abs(ox), abs(oy))
+        pad_left = blur * 2 + max(0, -ox)
+        pad_right = blur * 2 + max(0, ox)
+        pad_top = blur * 2 + max(0, -oy)
+        pad_bottom = blur * 2 + max(0, oy)
 
-        shadow_width = self.current_width + padding * 2
-        shadow_height = self.current_height + padding * 2
+        shadow_width = self.current_width + pad_left + pad_right
+        shadow_height = self.current_height + pad_top + pad_bottom
 
         # Generate shadow image
         shadow_path = os.path.join(self.recording_dir, 'decoration_shadow.png')
@@ -341,10 +344,9 @@ class DecorationPipeline:
         shadow_idx = self.add_input(shadow_path, is_image=True)
         shadow_stream = f'[{shadow_idx}:v]'
 
-        # Calculate where to position content on shadow canvas
-        # Content goes at (padding - offset) so shadow appears offset from content
-        content_x = padding - ox
-        content_y = padding - oy
+        # Content position in shadow canvas (shadow appears offset from content)
+        content_x = pad_left
+        content_y = pad_top
 
         # Loop shadow and overlay content on top
         shadow_loop = self._next_stream('shadow')
@@ -628,7 +630,8 @@ def apply_decorations_to_png(
             blur = options.shadow_blur
             ox = options.shadow_offset_x
             oy = options.shadow_offset_y
-            shadow_padding = blur * 2 + max(abs(ox), abs(oy))
+            pad_left = blur * 2 + max(0, -ox)
+            pad_top = blur * 2 + max(0, -oy)
 
             # Use corner mask for shadow shape if rounded corners were applied
             mask_path = os.path.join(temp_dir, 'decoration_mask.png')
@@ -651,8 +654,8 @@ def apply_decorations_to_png(
             shadow = Image.open(shadow_path).convert('RGBA')
 
             # Position content on shadow canvas
-            content_x = shadow_padding - ox
-            content_y = shadow_padding - oy
+            content_x = pad_left
+            content_y = pad_top
 
             # Composite content over shadow
             shadow.paste(img, (content_x, content_y), img)
@@ -724,6 +727,12 @@ if __name__ == '__main__':
             margin_color=opts_dict.get('margin_color', '#000000'),
             padding=opts_dict.get('padding', 0),
             padding_color=opts_dict.get('padding_color', '#1e1e1e'),
+            shadow_enabled=opts_dict.get('shadow_enabled', False),
+            shadow_blur=opts_dict.get('shadow_blur', 15),
+            shadow_offset_x=opts_dict.get('shadow_offset_x', 0),
+            shadow_offset_y=opts_dict.get('shadow_offset_y', 8),
+            shadow_opacity=opts_dict.get('shadow_opacity', 0.4),
+            shadow_color=opts_dict.get('shadow_color', '#000000'),
             speed=opts_dict.get('speed', 1.0),
             frame_delay_ms=opts_dict.get('gif_delay', 200),
         )

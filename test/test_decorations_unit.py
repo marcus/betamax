@@ -658,25 +658,28 @@ class TestShadowCanvasCalculation:
     """Unit tests for shadow canvas size calculation."""
 
     def test_basic_calculation(self):
-        w, h, p = _calculate_shadow_canvas_size(100, 100, 15, 0, 8)
-        # padding = 15*2 + max(0, 8) = 38
-        assert p == 38
-        assert w == 100 + 38 * 2  # 176
-        assert h == 100 + 38 * 2  # 176
+        w, h, pad_left, pad_top = _calculate_shadow_canvas_size(100, 100, 15, 0, 8)
+        # pad_left = 30, pad_right = 30, pad_top = 30, pad_bottom = 38
+        assert pad_left == 30
+        assert pad_top == 30
+        assert w == 160
+        assert h == 168
 
     def test_negative_offset(self):
-        w, h, p = _calculate_shadow_canvas_size(100, 100, 10, -20, 0)
-        # padding = 10*2 + max(20, 0) = 40
-        assert p == 40
-        assert w == 180
-        assert h == 180
+        w, h, pad_left, pad_top = _calculate_shadow_canvas_size(100, 100, 10, -20, 0)
+        # pad_left = 40, pad_right = 20, pad_top = 20, pad_bottom = 20
+        assert pad_left == 40
+        assert pad_top == 20
+        assert w == 160
+        assert h == 140
 
     def test_zero_blur(self):
-        w, h, p = _calculate_shadow_canvas_size(100, 100, 0, 5, 5)
-        # padding = 0*2 + max(5, 5) = 5
-        assert p == 5
-        assert w == 110
-        assert h == 110
+        w, h, pad_left, pad_top = _calculate_shadow_canvas_size(100, 100, 0, 5, 5)
+        # pad_left = 0, pad_right = 5, pad_top = 0, pad_bottom = 5
+        assert pad_left == 0
+        assert pad_top == 0
+        assert w == 105
+        assert h == 105
 
 
 class TestShadowGeneration:
@@ -710,9 +713,9 @@ class TestShadowGeneration:
         img = Image.open(output)
         assert img.mode == 'RGBA'
 
-        # Verify dimensions (100 + (15*2 + 8)*2 = 100 + 76 = 176)
-        assert img.width == 176
-        assert img.height == 176
+        # Per-side padding: w = 100+30+30=160, h = 100+30+38=168
+        assert img.width == 160
+        assert img.height == 168
 
     def test_generate_shadow_with_mask(self, temp_dir):
         # Create a simple corner mask first
@@ -777,9 +780,9 @@ class TestShadowGeneration:
 
         from PIL import Image
         img = Image.open(output)
-        # padding = 15*2 + max(10, 20) = 50
-        assert img.width == 100 + 50 * 2
-        assert img.height == 100 + 50 * 2
+        # Per-side: w = 100+40+30=170, h = 100+30+50=180
+        assert img.width == 170
+        assert img.height == 180
 
 
 class TestDecorationOptionsShadowValidation:
@@ -859,9 +862,9 @@ class TestAddShadowMethod:
         result = pipeline.add_shadow()
 
         assert result is True
-        # padding = 15*2 + max(0, 8) = 38
-        assert pipeline.current_width == 100 + 38 * 2
-        assert pipeline.current_height == 100 + 38 * 2
+        # Per-side: w = 100+30+30=160, h = 100+30+38=168
+        assert pipeline.current_width == 160
+        assert pipeline.current_height == 168
 
     def test_shadow_creates_file(self, temp_dir):
         opts = DecorationOptions(shadow_enabled=True)

@@ -523,10 +523,9 @@ class TestShadowPipeline:
         result = pipeline.add_shadow()
 
         assert result is True
-        # padding = 15*2 + max(0, 8) = 38
-        # dimensions = 100 + 38*2 = 176
-        assert pipeline.current_width == 176
-        assert pipeline.current_height == 176
+        # Per-side: w = 100+30+30=160, h = 100+30+38=168
+        assert pipeline.current_width == 160
+        assert pipeline.current_height == 168
 
     def test_shadow_creates_decoration_file(self, temp_dir):
         """Shadow creates decoration_shadow.png file."""
@@ -576,10 +575,9 @@ class TestShadowPipeline:
         # After padding: 820x620 (+20)
         # After window_bar: 820x650 (+30 height)
         # After margin: 860x690 (+40)
-        # After shadow: 860 + 76 = 936 width, 690 + 76 = 766 height
-        # (shadow padding = 15*2 + max(0, 8) = 38, so +38*2 = +76)
-        assert pipeline.current_width == 936
-        assert pipeline.current_height == 766
+        # After shadow (per-side): 860+30+30=920, 690+30+38=758
+        assert pipeline.current_width == 920
+        assert pipeline.current_height == 758
 
     def test_shadow_filter_chain_syntax(self, temp_dir):
         """Shadow adds correct filters to filter chain."""
@@ -638,10 +636,9 @@ class TestShadowPipeline:
         result = pipeline.add_shadow()
 
         assert result is True
-        # padding = 10*2 + max(15, 5) = 35
-        # dimensions = 100 + 35*2 = 170
-        assert pipeline.current_width == 170
-        assert pipeline.current_height == 170
+        # Per-side: w = 100+35+20=155, h = 100+20+25=145
+        assert pipeline.current_width == 155
+        assert pipeline.current_height == 145
 
     def test_shadow_cleanup(self, temp_dir):
         """Shadow file is cleaned up with other decorations."""

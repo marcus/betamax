@@ -219,14 +219,14 @@ validate_set_directive() {
       fi
       ;;
     theme)
-      # Validate theme name exists
+      # Validate theme name exists (pass via env var to prevent injection)
       local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
       local python_dir="$script_dir/python"
-      if ! PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
-import sys
+      if ! THEME_NAME="$value" PYTHONPATH="$python_dir:$PYTHONPATH" python3 -c "
+import sys, os
 sys.path.insert(0, '$python_dir')
 from themes import get_theme
-sys.exit(0 if get_theme('$value') else 1)
+sys.exit(0 if get_theme(os.environ.get('THEME_NAME', '')) else 1)
 " 2>/dev/null; then
         validation_error "Unknown theme: $value (use: dracula, catppuccin-mocha, gruvbox-dark, nord, tokyo-night, one-dark, github-dark, etc.)" "$idx"
         return 1

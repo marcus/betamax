@@ -500,7 +500,10 @@ from ffmpeg_pipeline import DecorationPipeline, DecorationOptions
 # Read options from environment variables (safe from shell injection)
 def get_env_int(name, default):
     val = os.environ.get(name, '')
-    return int(val) if val and val.isdigit() else default
+    try:
+        return int(val) if val else default
+    except ValueError:
+        return default
 
 def get_env_float(name, default):
     val = os.environ.get(name, '')
@@ -590,7 +593,7 @@ if result.returncode != 0:
 
   # Clean up environment variables
   unset BETAMAX_GIF_DELAY BETAMAX_SPEED BETAMAX_WINDOW_BAR BETAMAX_BAR_COLOR
-  unset BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
+  unset BETAMAX_BAR_HEIGHT BETAMAX_BORDER_RADIUS BETAMAX_MARGIN BETAMAX_MARGIN_COLOR
   unset BETAMAX_PADDING BETAMAX_PADDING_COLOR BETAMAX_RECORDING_DIR
   unset BETAMAX_SHADOW BETAMAX_SHADOW_BLUR BETAMAX_SHADOW_OFFSET_X
   unset BETAMAX_SHADOW_OFFSET_Y BETAMAX_SHADOW_OPACITY BETAMAX_SHADOW_COLOR

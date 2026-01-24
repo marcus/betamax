@@ -447,12 +447,19 @@ def _calculate_shadow_canvas_size(
     blur_radius: int,
     offset_x: int,
     offset_y: int,
-) -> Tuple[int, int, int]:
-    """Calculate shadow canvas dimensions and padding."""
-    padding = blur_radius * 2 + max(abs(offset_x), abs(offset_y))
-    shadow_width = width + padding * 2
-    shadow_height = height + padding * 2
-    return shadow_width, shadow_height, padding
+) -> Tuple[int, int, int, int]:
+    """Calculate shadow canvas dimensions with per-side padding.
+
+    Returns:
+        (shadow_width, shadow_height, pad_left, pad_top)
+    """
+    pad_left = blur_radius * 2 + max(0, -offset_x)
+    pad_right = blur_radius * 2 + max(0, offset_x)
+    pad_top = blur_radius * 2 + max(0, -offset_y)
+    pad_bottom = blur_radius * 2 + max(0, offset_y)
+    shadow_width = width + pad_left + pad_right
+    shadow_height = height + pad_top + pad_bottom
+    return shadow_width, shadow_height, pad_left, pad_top
 
 
 def generate_shadow_pillow(
@@ -494,27 +501,27 @@ def generate_shadow_pillow(
         blur_radius, offset_x, offset_y, opacity, color
     )
 
-    # Calculate canvas size
-    shadow_width, shadow_height, padding = _calculate_shadow_canvas_size(
+    # Calculate canvas size with per-side padding
+    shadow_width, shadow_height, pad_left, pad_top = _calculate_shadow_canvas_size(
         width, height, blur_radius, offset_x, offset_y
     )
 
     # Create alpha mask for shadow shape
     alpha = Image.new('L', (shadow_width, shadow_height), 0)
 
-    # Position of content area in shadow canvas (offset applied)
-    content_x = padding + offset_x
-    content_y = padding + offset_y
+    # Shadow shape position (content area shifted by offset)
+    shape_x = pad_left + offset_x
+    shape_y = pad_top + offset_y
 
     if source_mask_path and os.path.exists(source_mask_path):
         # Use existing corner mask as shadow shape
         mask = Image.open(source_mask_path).convert('L')
-        alpha.paste(mask, (content_x, content_y))
+        alpha.paste(mask, (shape_x, shape_y))
     else:
         # Draw solid rectangle
         draw = ImageDraw.Draw(alpha)
         draw.rectangle(
-            [content_x, content_y, content_x + width - 1, content_y + height - 1],
+            [shape_x, shape_y, shape_x + width - 1, shape_y + height - 1],
             fill=255
         )
 
@@ -579,13 +586,18 @@ def generate_shadow_imagemagick(
         blur_radius, offset_x, offset_y, opacity, color
     )
 
-    # Calculate canvas size
-    shadow_width, shadow_height, padding = _calculate_shadow_canvas_size(
+    # Calculate canvas size with per-side padding
+    shadow_width, shadow_height, pad_left, pad_top = _calculate_shadow_canvas_size(
         width, height, blur_radius, offset_x, offset_y
     )
 
-    content_x = padding + offset_x
-    content_y = padding + offset_y
+    shape_x = pad_left + offset_x
+    shape_y = pad_top + offset_y
+
+    # Format geometry string with proper sign handling
+    geo_x = f'+{shape_x}' if shape_x >= 0 else str(shape_x)
+    geo_y = f'+{shape_y}' if shape_y >= 0 else str(shape_y)
+    geometry = f'{geo_x}{geo_y}'
 
     if source_mask_path and os.path.exists(source_mask_path):
         # Use mask as shadow shape
@@ -593,7 +605,7 @@ def generate_shadow_imagemagick(
             'convert',
             '-size', f'{shadow_width}x{shadow_height}', 'xc:transparent',
             source_mask_path,
-            '-geometry', f'+{content_x}+{content_y}',
+            '-geometry', geometry,
             '-composite',
             '-channel', 'A', '-blur', f'0x{blur_radius}',
             '-channel', 'A', '-evaluate', 'multiply', str(opacity),
@@ -607,7 +619,7 @@ def generate_shadow_imagemagick(
             'convert',
             '-size', f'{shadow_width}x{shadow_height}', 'xc:transparent',
             '-fill', 'white',
-            '-draw', f'rectangle {content_x},{content_y} {content_x + width - 1},{content_y + height - 1}',
+            '-draw', f'rectangle {shape_x},{shape_y} {shape_x + width - 1},{shape_y + height - 1}',
             '-channel', 'A', '-blur', f'0x{blur_radius}',
             '-channel', 'A', '-evaluate', 'multiply', str(opacity),
             '+channel',
