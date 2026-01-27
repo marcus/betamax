@@ -62,7 +62,7 @@
 }
 
 .heroLogo {
-  max-width: 400px;
+  max-width: 280px;
   width: 100%;
   height: auto;
   margin-bottom: 1.5rem;
@@ -74,7 +74,7 @@
 
 @media (max-width: 768px) {
   .heroLogo {
-    max-width: 280px;
+    max-width: 200px;
   }
 }
 
@@ -112,11 +112,11 @@
 
 .heroSubtitle {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: clamp(1.5rem, 4vw, 2.2rem);
-  font-weight: 500;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 600;
   max-width: 54ch;
   margin: 0 auto 1.5rem;
-  line-height: 1.4;
+  line-height: 1.3;
   /* Light theme shimmer */
   background: linear-gradient(90deg,
     rgba(74, 155, 199, 0.9) 0%,
