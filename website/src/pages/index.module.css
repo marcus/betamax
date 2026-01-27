@@ -463,3 +463,112 @@
   color: var(--text-muted);
   font-size: 0.85rem;
 }
+
+/* Sister Projects Section */
+.sisterProjects {
+  padding: 4rem 0;
+  background: var(--section-alt-bg);
+  border-top: 1px solid var(--terminal-border);
+}
+
+.sisterProjects h2 {
+  color: var(--ifm-color-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.sisterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .sisterGrid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+}
+
+.sisterCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1.5rem;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.sisterCard:hover {
+  transform: translateY(-4px);
+  text-decoration: none;
+}
+
+.sisterCardBlue {
+  background: linear-gradient(135deg, rgba(126, 184, 218, 0.15) 0%, rgba(126, 184, 218, 0.05) 100%);
+  border-color: rgba(126, 184, 218, 0.3);
+}
+
+.sisterCardBlue:hover {
+  border-color: rgba(126, 184, 218, 0.6);
+  box-shadow: 0 8px 32px rgba(126, 184, 218, 0.2);
+}
+
+.sisterCardPurple {
+  background: linear-gradient(135deg, rgba(174, 129, 255, 0.15) 0%, rgba(174, 129, 255, 0.05) 100%);
+  border-color: rgba(174, 129, 255, 0.3);
+}
+
+.sisterCardPurple:hover {
+  border-color: rgba(174, 129, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(174, 129, 255, 0.2);
+}
+
+.sisterCardGreen {
+  background: linear-gradient(135deg, rgba(0, 200, 150, 0.15) 0%, rgba(0, 200, 150, 0.05) 100%);
+  border-color: rgba(0, 200, 150, 0.3);
+}
+
+.sisterCardGreen:hover {
+  border-color: rgba(0, 200, 150, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 200, 150, 0.2);
+}
+
+.sisterCardCurrent {
+  border-width: 2px;
+}
+
+.sisterLogo {
+  max-width: 120px;
+  max-height: 80px;
+  width: auto;
+  height: auto;
+  margin-bottom: 1rem;
+  object-fit: contain;
+}
+
+.sisterCard h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.5rem;
+}
+
+.sisterNameCurrent {
+  font-weight: 700;
+}
+
+.sisterCard p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}

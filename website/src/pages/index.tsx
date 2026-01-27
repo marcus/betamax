@@ -206,6 +206,71 @@ function OutputFormats() {
   );
 }
 
+type SisterProject = {
+  name: string;
+  tagline: string;
+  logo: string;
+  url: string;
+  colorClass: string;
+  current?: boolean;
+};
+
+const sisterProjects: SisterProject[] = [
+  {
+    name: 'Betamax',
+    tagline: 'Record anything you see in your terminal.',
+    logo: '/betamax/img/betamax-logo-fuzzy.png',
+    url: 'https://marcus.github.io/betamax/',
+    colorClass: styles.sisterCardBlue,
+    current: true,
+  },
+  {
+    name: 'Sidecar',
+    tagline: 'You might never open your editor again.',
+    logo: '/betamax/img/sidecar-logo.png',
+    url: 'https://marcus.github.io/sidecar/',
+    colorClass: styles.sisterCardPurple,
+  },
+  {
+    name: 'td',
+    tagline: 'Task management for AI-assisted development.',
+    logo: '/betamax/img/td-logo.png',
+    url: 'https://marcus.github.io/td/',
+    colorClass: styles.sisterCardGreen,
+  },
+];
+
+function SisterProjects() {
+  return (
+    <section className={styles.sisterProjects}>
+      <div className="container">
+        <Heading as="h2">Sister Projects</Heading>
+        <div className={styles.sisterGrid}>
+          {sisterProjects.map((project) => (
+            <a
+              key={project.name}
+              href={project.url}
+              className={clsx(styles.sisterCard, project.colorClass, {
+                [styles.sisterCardCurrent]: project.current,
+              })}
+            >
+              <img
+                src={project.logo}
+                alt={`${project.name} logo`}
+                className={styles.sisterLogo}
+              />
+              <h3 className={project.current ? styles.sisterNameCurrent : undefined}>
+                {project.name}
+              </h3>
+              <p>{project.tagline}</p>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
@@ -225,6 +290,7 @@ export default function Home(): ReactNode {
         </section>
         <QuickStart />
         <OutputFormats />
+        <SisterProjects />
       </main>
     </Layout>
   );
