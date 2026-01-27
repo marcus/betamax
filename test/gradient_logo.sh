@@ -8,13 +8,13 @@ PHASE=${1:-0}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOGO_FILE="${SCRIPT_DIR}/../betamax.txt"
 
-# Rainbow colors using 256-color mode (smooth gradient)
-# These cycle through: red -> orange -> yellow -> green -> cyan -> blue -> magenta -> red
+# Powder blue (#7EB8DA) to pastel purple (#B8A9C9) gradient using 256-color mode
+# Smooth cycling: powder blue -> lavender -> pastel purple -> lavender -> powder blue
 COLORS=(
-  196 202 208 214 220 226
-  190 154 118 82 46 47
-  51 45 39 33 27 21
-  57 93 129 165 201 200
+  117 117 153 153 159 159
+  152 146 146 147 147 183
+  183 182 182 141 141 140
+  140 177 177 146 153 117
 )
 NUM_COLORS=${#COLORS[@]}
 
@@ -40,6 +40,6 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   printf '%b\e[0m\n' "$output"
 done < "$LOGO_FILE"
 
-# Add centered yellow tagline
+# Add centered tagline in powder blue
 echo ""
-printf '\e[33m%s\e[0m\n' "      Record anything in the terminal"
+printf '\e[38;5;153m%s\e[0m\n' "      Record anything in the terminal"

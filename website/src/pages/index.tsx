@@ -135,8 +135,8 @@ function QuickStart() {
     <section className={styles.quickStart}>
       <div className="container">
         <Heading as="h2">Quick Start</Heading>
-        <div className="row">
-          <div className="col col--6">
+        <div className={styles.quickStartGrid}>
+          <div>
             <h3>Installation</h3>
             <CodeBlock language="bash">
 {`# Clone and add to PATH
@@ -149,7 +149,7 @@ brew install homeport/tap/termshot  # for PNG
 brew install ffmpeg                  # for GIF`}
             </CodeBlock>
           </div>
-          <div className="col col--6">
+          <div>
             <h3>Basic Usage</h3>
             <CodeBlock language="bash">
 {`# Capture TUI screenshots interactively

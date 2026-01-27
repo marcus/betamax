@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "shells": [
+    {
+      "tmuxName": "sidecar-sh-betamax-2",
+      "displayName": "CLI plan",
+      "createdAt": "2026-01-26T21:12:15.802183-08:00"
+    },
+    {
+      "tmuxName": "sidecar-sh-betamax-3",
+      "displayName": "betamax capture",
+      "createdAt": "2026-01-26T21:12:15.806626-08:00"
+    }
+  ]
+}

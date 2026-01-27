@@ -58,7 +58,11 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Betamax',
+      logo: {
+        alt: 'Betamax',
+        src: 'img/betamax-logo-fuzzy.png',
+        height: 32,
+      },
       items: [
         {
           type: 'docSidebar',
