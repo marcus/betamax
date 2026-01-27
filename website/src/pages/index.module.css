@@ -67,6 +67,9 @@
   height: auto;
   margin-bottom: 1.5rem;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 30px rgba(126, 184, 218, 0.15));
+  /* Force GPU compositing to fix drop-shadow rendering on initial paint */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (max-width: 768px) {
@@ -371,6 +374,29 @@
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1rem;
   margin-bottom: 1rem;
+}
+
+.quickStartGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.quickStartGrid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.quickStartGrid pre {
+  flex: 1;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .quickStartGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .quickStartDemo {
