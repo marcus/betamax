@@ -106,6 +106,16 @@ const FeatureList: FeatureItem[] = [
       </>
     ),
   },
+  {
+    title: '30+ Themes & Decorations',
+    icon: 'icon-palette',
+    description: (
+      <>
+        Built-in themes like Dracula, Nord, and Catppuccin. Add window bars,
+        drop shadows, and rounded corners for polished results.
+      </>
+    ),
+  },
 ];
 
 function Feature({title, icon, description}: FeatureItem) {
