@@ -52,7 +52,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/betamax-social-card.png',
+    image: 'img/betamax-logo-fuzzy.png',
     colorMode: {
       defaultMode: 'dark',
       respectPrefersColorScheme: false,
