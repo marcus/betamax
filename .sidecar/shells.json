@@ -3,13 +3,13 @@
   "shells": [
     {
       "tmuxName": "sidecar-sh-betamax-2",
-      "displayName": "CLI plan",
-      "createdAt": "2026-01-26T21:12:15.802183-08:00"
+      "displayName": "Shell 2",
+      "createdAt": "2026-01-26T21:58:17.614486-08:00"
     },
     {
       "tmuxName": "sidecar-sh-betamax-3",
-      "displayName": "betamax capture",
-      "createdAt": "2026-01-26T21:12:15.806626-08:00"
+      "displayName": "Shell 3",
+      "createdAt": "2026-01-26T21:58:17.619076-08:00"
     }
   ]
 }

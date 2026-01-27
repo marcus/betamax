@@ -168,8 +168,8 @@ betamax "htop" -- @sleep:1000 @capture:htop.png q`}
         </div>
         <div className={styles.quickStartDemo}>
           <img
-            src="/betamax/img/demos/betamax_inline.gif"
-            alt="Betamax inline usage demo"
+            src="/betamax/img/demos/sidecar_demo.png"
+            alt="Sidecar TUI screenshot captured with Betamax"
             className={styles.quickStartGif}
           />
         </div>
@@ -254,14 +254,13 @@ function SisterProjects() {
                 [styles.sisterCardCurrent]: project.current,
               })}
             >
-              <img
-                src={project.logo}
-                alt={`${project.name} logo`}
-                className={styles.sisterLogo}
-              />
-              <h3 className={project.current ? styles.sisterNameCurrent : undefined}>
-                {project.name}
-              </h3>
+              <div className={styles.sisterLogoWrapper}>
+                <img
+                  src={project.logo}
+                  alt={`${project.name} logo`}
+                  className={styles.sisterLogo}
+                />
+              </div>
               <p>{project.tagline}</p>
             </a>
           ))}
