@@ -65,7 +65,7 @@
   max-width: 280px;
   width: 100%;
   height: auto;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
   filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 30px rgba(126, 184, 218, 0.15));
   /* Force GPU compositing to fix drop-shadow rendering on initial paint */
   transform: translateZ(0);
@@ -115,7 +115,7 @@
   font-size: clamp(2rem, 5vw, 3.2rem);
   font-weight: 600;
   max-width: 54ch;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 2.5rem;
   line-height: 1.3;
   /* Light theme shimmer */
   background: linear-gradient(90deg,
@@ -174,7 +174,8 @@
   align-items: center;
   gap: 16px;
   width: 100%;
-  margin-top: 16px;
+  margin-top: 0;
+  margin-bottom: 1rem;
 }
 
 .heroNote {
@@ -192,12 +193,12 @@
 }
 
 .heroDemo {
-  margin-top: 3rem;
+  margin-top: 4rem;
   text-align: center;
 }
 
 .heroDemoGif {
-  max-width: 600px;
+  max-width: 480px;
   width: 100%;
   border-radius: 8px;
   border: 1px solid var(--terminal-border);
@@ -380,10 +381,23 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-  align-items: stretch;
 }
 
 .quickStartGrid > div {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Force CodeBlock containers to fill remaining height */
+.quickStartGrid > div > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.quickStartGrid > div > div > div {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }

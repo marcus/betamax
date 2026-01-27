@@ -38,10 +38,9 @@ function HomepageHeader() {
           <div className={styles.heroDemo}>
             <img
               src="/betamax/img/gradient_wave.gif"
-              alt="Betamax animated demo"
+              alt="Animated ASCII art recorded with Betamax"
               className={styles.heroDemoGif}
             />
-            <p className={styles.heroDemoCaption}>Animated ASCII art recorded with Betamax</p>
           </div>
         </div>
       </div>
