@@ -100,6 +100,25 @@ Guides appear collapsed under "Guides" in the sidebar (configured in `_category_
 1. Place in `/website/static/img/demos/`
 2. Reference as `/img/demos/filename.png` (relative to `/static`)
 
+### Taking Screenshots with Betamax
+
+Use betamax to capture consistent, reproducible TUI screenshots:
+
+```bash
+# 16:9 aspect ratio at small laptop width (recommended for website)
+betamax "sidecar" --cols 100 --rows 28 -o ./website/static/img/demos -- \
+  @sleep:2000 @capture:sidecar_demo.png q y
+
+# Standard terminal size
+betamax "htop" --cols 120 --rows 35 -o ./website/static/img/demos -- \
+  @sleep:1000 @capture:htop_demo.png q
+```
+
+**Recommended dimensions:**
+- `100x28` - 16:9 ratio, small laptop (~1280px wide)
+- `120x35` - Standard terminal size
+- `80x24` - Classic terminal size
+
 ### Updating CLI Reference
 
 Edit `/website/docs/cli-reference.md`:
