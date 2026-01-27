@@ -58,7 +58,7 @@ type FeatureItem = {
 const FeatureList: FeatureItem[] = [
   {
     title: 'Interactive Recording',
-    icon: 'icon-record',
+    icon: 'icon-circle-dot',
     description: (
       <>
         Record your terminal sessions with <code>betamax record</code>. Captures
