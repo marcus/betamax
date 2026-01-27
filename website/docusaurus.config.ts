@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Betamax',
-  tagline: 'Terminal session recorder for TUI applications',
+  tagline: 'Record anything you see in your terminal.',
   favicon: 'img/favicon.ico',
 
   future: {
@@ -103,7 +103,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright ${new Date().getFullYear()} Betamax. MIT License.`,
+      copyright: `Copyright ${new Date().getFullYear()} <a href="https://github.com/marcus" target="_blank" rel="noopener noreferrer">Marcus Vorwaller</a>. MIT License.`,
     },
     prism: {
       theme: prismThemes.github,

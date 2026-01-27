@@ -13,34 +13,36 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero', styles.heroBanner)}>
       <div className="container">
-        <img
-          src="/betamax/img/betamax-logo.png"
-          alt="Betamax Logo"
-          className={styles.heroLogo}
-        />
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--primary button--lg"
-            to="/docs/intro">
-            Get Started
-          </Link>
-          <Link
-            className="button button--secondary button--lg"
-            href="https://github.com/marcus/betamax">
-            View on GitHub
-          </Link>
-        </div>
-        <div className={styles.heroDemo}>
+        <div className={styles.heroHeader}>
           <img
-            src="/betamax/img/gradient_wave.gif"
-            alt="Betamax animated demo"
-            className={styles.heroDemoGif}
+            src="/betamax/img/betamax-logo-fuzzy.png"
+            alt="Betamax Logo"
+            className={styles.heroLogo}
           />
-          <p className={styles.heroDemoCaption}>Animated ASCII art recorded with Betamax</p>
+          <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
+          <div className={styles.heroCta}>
+            <div className={styles.buttons}>
+              <Link
+                className="button button--primary button--lg"
+                to="/docs/intro">
+                Get Started
+              </Link>
+              <Link
+                className="button button--secondary button--lg"
+                href="https://github.com/marcus/betamax">
+                View on GitHub
+              </Link>
+            </div>
+            <p className={styles.heroNote}>Works with tmux • No custom terminal needed</p>
+          </div>
+          <div className={styles.heroDemo}>
+            <img
+              src="/betamax/img/gradient_wave.gif"
+              alt="Betamax animated demo"
+              className={styles.heroDemoGif}
+            />
+            <p className={styles.heroDemoCaption}>Animated ASCII art recorded with Betamax</p>
+          </div>
         </div>
       </div>
     </header>
@@ -108,12 +110,12 @@ const FeatureList: FeatureItem[] = [
 
 function Feature({title, icon, description}: FeatureItem) {
   return (
-    <div className={clsx('col col--3')}>
-      <div className={styles.featureCard}>
+    <div className={styles.featureCard}>
+      <div className={styles.featureIconWrapper}>
         <i className={clsx(icon, styles.featureIcon)} />
-        <h3>{title}</h3>
-        <p>{description}</p>
       </div>
+      <h3>{title}</h3>
+      <p>{description}</p>
     </div>
   );
 }
@@ -204,7 +206,7 @@ export default function Home(): ReactNode {
       <main>
         <section className={styles.features}>
           <div className="container">
-            <div className="row">
+            <div className={styles.featureGrid}>
               {FeatureList.map((props, idx) => (
                 <Feature key={idx} {...props} />
               ))}

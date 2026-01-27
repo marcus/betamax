@@ -3,42 +3,142 @@
  * Dark theme with monospace fonts and terminal colors
  */
 
-/* Import JetBrains Mono for monospace */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Import JetBrains Mono for monospace and Space Grotesk for headers */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+/* Animatable CSS custom properties for gradient backgrounds */
+@property --spotlight-x1 {
+  syntax: '<percentage>';
+  initial-value: 50%;
+  inherits: false;
+}
+
+@property --spotlight-y1 {
+  syntax: '<percentage>';
+  initial-value: 8%;
+  inherits: false;
+}
+
+@property --spotlight-x2 {
+  syntax: '<percentage>';
+  initial-value: 80%;
+  inherits: false;
+}
+
+@property --spotlight-y2 {
+  syntax: '<percentage>';
+  initial-value: 20%;
+  inherits: false;
+}
+
+@property --page-glow-x1 {
+  syntax: '<percentage>';
+  initial-value: 50%;
+  inherits: false;
+}
+
+@property --page-glow-x2 {
+  syntax: '<percentage>';
+  initial-value: 20%;
+  inherits: false;
+}
+
+@property --page-glow-y2 {
+  syntax: '<percentage>';
+  initial-value: 60%;
+  inherits: false;
+}
+
+@property --page-glow-x3 {
+  syntax: '<percentage>';
+  initial-value: 80%;
+  inherits: false;
+}
+
+@property --page-glow-y3 {
+  syntax: '<percentage>';
+  initial-value: 80%;
+  inherits: false;
+}
 
 :root {
-  --ifm-color-primary: #00d4aa;
-  --ifm-color-primary-dark: #00bf99;
-  --ifm-color-primary-darker: #00b391;
-  --ifm-color-primary-darkest: #009477;
-  --ifm-color-primary-light: #00e9bb;
-  --ifm-color-primary-lighter: #00f5c3;
-  --ifm-color-primary-lightest: #1affcf;
+  --ifm-color-primary: #7EB8DA;
+  --ifm-color-primary-dark: #5FA8D0;
+  --ifm-color-primary-darker: #4A9BC7;
+  --ifm-color-primary-darkest: #3585B5;
+  --ifm-color-primary-light: #9DC8E4;
+  --ifm-color-primary-lighter: #B5D6EC;
+  --ifm-color-primary-lightest: #D4E8F5;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 
   /* Terminal colors */
   --terminal-green: #00ff00;
-  --terminal-cyan: #00d4aa;
+  --terminal-cyan: #7EB8DA;
   --terminal-bg: #1a1a2e;
   --terminal-surface: #16213e;
   --terminal-border: #2a2a4a;
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #00d4aa;
-  --ifm-color-primary-dark: #00bf99;
-  --ifm-color-primary-darker: #00b391;
-  --ifm-color-primary-darkest: #009477;
-  --ifm-color-primary-light: #00e9bb;
-  --ifm-color-primary-lighter: #00f5c3;
-  --ifm-color-primary-lightest: #1affcf;
+  --ifm-color-primary: #7EB8DA;
+  --ifm-color-primary-dark: #5FA8D0;
+  --ifm-color-primary-darker: #4A9BC7;
+  --ifm-color-primary-darkest: #3585B5;
+  --ifm-color-primary-light: #9DC8E4;
+  --ifm-color-primary-lighter: #B5D6EC;
+  --ifm-color-primary-lightest: #D4E8F5;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 
   --ifm-background-color: #0a0a0f;
   --ifm-background-surface-color: #12121a;
   --ifm-navbar-background-color: #0a0a0f;
   --ifm-footer-background-color: #0a0a0f;
+}
+
+/* Animated page-level gradient background */
+html[data-theme='dark']::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80vw 50vh at var(--page-glow-x1) -20%, rgba(126, 184, 218, 0.18), transparent 50%),
+    radial-gradient(ellipse 60vw 40vh at var(--page-glow-x2) var(--page-glow-y2), rgba(126, 184, 218, 0.12), transparent 70%),
+    radial-gradient(ellipse 60vw 40vh at var(--page-glow-x3) var(--page-glow-y3), rgba(95, 168, 208, 0.10), transparent 70%);
+  animation: betamax-page-glow 25s ease-in-out infinite;
+}
+
+@keyframes betamax-page-glow {
+  0%, 100% {
+    --page-glow-x1: 50%;
+    --page-glow-x2: 20%;
+    --page-glow-y2: 60%;
+    --page-glow-x3: 80%;
+    --page-glow-y3: 80%;
+  }
+  33% {
+    --page-glow-x1: 40%;
+    --page-glow-x2: 30%;
+    --page-glow-y2: 50%;
+    --page-glow-x3: 70%;
+    --page-glow-y3: 70%;
+  }
+  66% {
+    --page-glow-x1: 60%;
+    --page-glow-x2: 15%;
+    --page-glow-y2: 70%;
+    --page-glow-x3: 85%;
+    --page-glow-y3: 85%;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme='dark']::before {
+    animation: none;
+  }
 }
 
 /* Monospace fonts throughout */
@@ -69,48 +169,86 @@ code {
 }
 
 .hero__title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  color: #00d4aa;
+  color: #7EB8DA;
 }
 
 .hero__subtitle {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', sans-serif;
   color: #888;
 }
 
 /* Buttons */
 .button--primary {
-  background: linear-gradient(135deg, #00d4aa 0%, #00a888 100%);
-  border: none;
-  font-family: 'JetBrains Mono', monospace;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(0, 0, 0, 0.1)),
+    linear-gradient(135deg, #7EB8DA 0%, #5FA8D0 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-family: 'Space Grotesk', sans-serif;
   font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
 }
 
 .button--primary:hover {
-  background: linear-gradient(135deg, #00e9bb 0%, #00bf99 100%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.05)),
+    linear-gradient(135deg, #9DC8E4 0%, #7EB8DA 100%);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(126, 184, 218, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+
+.button--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .button--secondary {
-  border: 1px solid #00d4aa;
-  color: #00d4aa;
-  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(126, 184, 218, 0.4);
+  color: #7EB8DA;
+  font-family: 'Space Grotesk', sans-serif;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+  padding: 12px 24px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
 }
 
 .button--secondary:hover {
-  background: rgba(0, 212, 170, 0.1);
-  border-color: #00e9bb;
-  color: #00e9bb;
+  background: rgba(126, 184, 218, 0.1);
+  border-color: rgba(126, 184, 218, 0.6);
+  color: #9DC8E4;
+  transform: translateY(-1px);
 }
 
 /* Footer */
 .footer {
   border-top: 1px solid var(--terminal-border);
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 .footer__title {
-  font-family: 'JetBrains Mono', monospace;
-  color: #00d4aa;
+  font-family: 'Space Grotesk', sans-serif;
+  color: #7EB8DA;
+}
+
+.footer__link-item {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.footer__copyright {
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 /* Navbar */
@@ -137,12 +275,12 @@ code {
 }
 
 .feature-card:hover {
-  border-color: #00d4aa;
+  border-color: #7EB8DA;
 }
 
 .feature-card h3 {
-  color: #00d4aa;
-  font-family: 'JetBrains Mono', monospace;
+  color: #7EB8DA;
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 /* Terminal demo container */
@@ -190,7 +328,7 @@ code {
 }
 
 .quick-start h2 {
-  color: #00d4aa;
+  color: #7EB8DA;
   font-family: 'JetBrains Mono', monospace;
   margin-bottom: 1rem;
 }
@@ -199,4 +337,40 @@ code {
 i[class^="icon-"] {
   font-size: 1.25em;
   vertical-align: middle;
+}
+
+/* Documentation pages - consistent fonts */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.markdown p,
+.markdown li,
+.markdown td,
+.markdown th {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+article h1,
+article h2,
+article h3,
+article h4 {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Footer copyright link styling */
+.footer__copyright a {
+  color: #7EB8DA;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer__copyright a:hover {
+  color: #9DC8E4;
+  text-decoration: underline;
 }
