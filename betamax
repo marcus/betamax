@@ -105,7 +105,9 @@ load_config_files() {
     dir="$(dirname "$dir")"
   done
   local global_config="${XDG_CONFIG_HOME:-$HOME/.config}/betamax/config"
-  [[ -f "$global_config" ]] && parse_config_file "$global_config"
+  if [[ -f "$global_config" ]]; then
+    parse_config_file "$global_config"
+  fi
 }
 
 # Load a named preset
