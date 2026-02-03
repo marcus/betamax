@@ -11,8 +11,8 @@ const config: Config = {
     v4: true,
   },
 
-  url: 'https://marcus.github.io',
-  baseUrl: '/betamax/',
+  url: 'https://betamax.haplab.com',
+  baseUrl: '/',
 
   organizationName: 'marcus',
   projectName: 'betamax',
@@ -69,6 +69,11 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Docs',
+        },
+        {
+          href: 'https://haplab.com',
+          position: 'left',
+          label: 'Haplab',
         },
         {
           href: 'https://github.com/marcus/betamax',

@@ -6,6 +6,7 @@ import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import CodeBlock from '@theme/CodeBlock';
 
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './index.module.css';
 
 function HomepageHeader() {
@@ -15,7 +16,7 @@ function HomepageHeader() {
       <div className="container">
         <div className={styles.heroHeader}>
           <img
-            src="/betamax/img/betamax-logo-fuzzy.png"
+            src={useBaseUrl('/img/betamax-logo-fuzzy.png')}
             alt="Betamax Logo"
             className={styles.heroLogo}
           />
@@ -37,7 +38,7 @@ function HomepageHeader() {
           </div>
           <div className={styles.heroDemo}>
             <img
-              src="/betamax/img/gradient_wave.gif"
+              src={useBaseUrl('/img/gradient_wave.gif')}
               alt="Animated ASCII art recorded with Betamax"
               className={styles.heroDemoGif}
             />
@@ -167,7 +168,7 @@ betamax "htop" -- @sleep:1000 @capture:htop.png q`}
         </div>
         <div className={styles.quickStartDemo}>
           <img
-            src="/betamax/img/demos/sidecar_demo.png"
+            src={useBaseUrl('/img/demos/sidecar_demo.png')}
             alt="Sidecar TUI screenshot captured with Betamax"
             className={styles.quickStartGif}
           />
@@ -218,23 +219,23 @@ const sisterProjects: SisterProject[] = [
   {
     name: 'Betamax',
     tagline: 'Record anything you see in your terminal.',
-    logo: '/betamax/img/betamax-logo-fuzzy.png',
-    url: 'https://marcus.github.io/betamax/',
+    logo: '/img/betamax-logo-fuzzy.png',
+    url: 'https://betamax.haplab.com/',
     colorClass: styles.sisterCardBlue,
     current: true,
   },
   {
     name: 'Sidecar',
     tagline: 'You might never open your editor again.',
-    logo: '/betamax/img/sidecar-logo.png',
-    url: 'https://marcus.github.io/sidecar/',
+    logo: '/img/sidecar-logo.png',
+    url: 'https://sidecar.haplab.com/',
     colorClass: styles.sisterCardPurple,
   },
   {
     name: 'td',
     tagline: 'Task management for AI-assisted development.',
-    logo: '/betamax/img/td-logo.png',
-    url: 'https://marcus.github.io/td/',
+    logo: '/img/td-logo.png',
+    url: 'https://td.haplab.com/',
     colorClass: styles.sisterCardGreen,
   },
 ];
@@ -244,6 +245,9 @@ function SisterProjects() {
     <section className={styles.sisterProjects}>
       <div className="container">
         <Heading as="h2">Sister Projects</Heading>
+        <a href="https://haplab.com" className={styles.sisterHaplab}>
+          <img src={useBaseUrl('/img/haplab-logo.png')} alt="Haplab" />
+        </a>
         <div className={styles.sisterGrid}>
           {sisterProjects.map((project) => (
             <a
