@@ -238,6 +238,13 @@ const sisterProjects: SisterProject[] = [
     url: 'https://td.haplab.com/',
     colorClass: styles.sisterCardGreen,
   },
+  {
+    name: 'Nightshift',
+    tagline: 'It finds what you forgot to look for.',
+    logo: '/img/nightshift-logo.png',
+    url: 'https://nightshift.haplab.com/',
+    colorClass: styles.sisterCardAmber,
+  },
 ];
 
 function SisterProjects() {

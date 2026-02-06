@@ -494,7 +494,7 @@
 
 .sisterGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
   max-width: 1000px;
   margin: 0 auto;
@@ -551,6 +551,16 @@
 .sisterCardGreen:hover {
   border-color: rgba(0, 200, 150, 0.6);
   box-shadow: 0 8px 32px rgba(0, 200, 150, 0.2);
+}
+
+.sisterCardAmber {
+  background: linear-gradient(135deg, rgba(232, 168, 73, 0.15) 0%, rgba(232, 168, 73, 0.05) 100%);
+  border-color: rgba(232, 168, 73, 0.3);
+}
+
+.sisterCardAmber:hover {
+  border-color: rgba(232, 168, 73, 0.6);
+  box-shadow: 0 8px 32px rgba(232, 168, 73, 0.2);
 }
 
 .sisterCardCurrent {
