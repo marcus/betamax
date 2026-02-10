@@ -7,6 +7,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$SCRIPT_DIR/output"
 
+# Flakiness analysis
+ANALYZE_FLAKINESS=false
+FLAKINESS_TMPDIR="${PROJECT_DIR}/.betamax_flakiness"
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,13 +21,25 @@ PASSED=0
 FAILED=0
 
 pass() {
-  echo -e "${GREEN}✓${NC} $1"
+  local test_name="$1"
+  echo -e "${GREEN}✓${NC} $test_name"
   ((PASSED++)) || true
+
+  # Record test execution if flakiness analysis enabled
+  if [[ "$ANALYZE_FLAKINESS" == true ]]; then
+    "$PROJECT_DIR/bin/betamax-flakiness" --collect "$test_name" "true" "0" 2>/dev/null || true
+  fi
 }
 
 fail() {
-  echo -e "${RED}✗${NC} $1"
+  local test_name="$1"
+  echo -e "${RED}✗${NC} $test_name"
   ((FAILED++)) || true
+
+  # Record test execution if flakiness analysis enabled
+  if [[ "$ANALYZE_FLAKINESS" == true ]]; then
+    "$PROJECT_DIR/bin/betamax-flakiness" --collect "$test_name" "false" "0" 2>/dev/null || true
+  fi
 }
 
 warn() {
@@ -301,6 +317,13 @@ summary() {
   echo -e "Results: ${GREEN}$PASSED passed${NC}, ${RED}$FAILED failed${NC}"
   echo "================================"
 
+  # Generate flakiness report if analysis was enabled
+  if [[ "$ANALYZE_FLAKINESS" == true ]] && [[ -d "$FLAKINESS_TMPDIR" ]]; then
+    echo ""
+    echo "Generating flakiness report..."
+    "$PROJECT_DIR/bin/betamax-flakiness" analyze -o "$OUTPUT_DIR" --cleanup || true
+  fi
+
   if [[ $FAILED -gt 0 ]]; then
     exit 1
   fi
@@ -319,7 +342,26 @@ run_validation_tests() {
 
 # Main
 main() {
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --analyze-flakiness)
+        ANALYZE_FLAKINESS=true
+        shift
+        ;;
+      *)
+        shift
+        ;;
+    esac
+  done
+
   setup
+
+  # Initialize flakiness database if analyzing
+  if [[ "$ANALYZE_FLAKINESS" == true ]]; then
+    mkdir -p "$FLAKINESS_TMPDIR"
+  fi
+
   run_validation_tests
   test_basic
   test_capture_formats

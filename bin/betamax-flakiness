@@ -1,0 +1,505 @@
+#!/bin/bash
+# betamax-flakiness - Comprehensive test flakiness analyzer
+# Analyzes test execution history and generates detailed flakiness reports
+
+set -e
+
+# Resolve script directory
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source libraries
+source "$PROJECT_DIR/lib/flakiness_collector.sh"
+source "$PROJECT_DIR/lib/flakiness_analyzer.sh"
+source "$PROJECT_DIR/lib/flakiness_reporter.sh"
+
+# Default values
+FLAKINESS_TMPDIR="${FLAKINESS_TMPDIR:-.betamax_flakiness}"
+OUTPUT_DIR="${OUTPUT_DIR:-.}"
+REPORT_FORMAT="json,html,txt"  # All formats by default
+ANALYZE_ONLY=false
+CLEANUP=false
+
+# Print usage
+usage() {
+  cat << 'EOF'
+betamax-flakiness - Analyze test flakiness and generate reports
+
+Usage:
+  betamax-flakiness [OPTIONS] [COMMAND]
+
+Commands:
+  analyze       Compute metrics and generate reports (default)
+  collect       Record test execution (used internally)
+  clean         Clean up flakiness data
+  help          Show this help message
+
+Options:
+  -f, --format FORMAT    Output formats: json, html, txt (comma-separated)
+  -o, --output DIR       Output directory (default: current directory)
+  --collect TEST PASS MS Record a test execution
+  --cleanup              Clean up flakiness database after reporting
+  -v, --verbose          Verbose output
+
+Examples:
+  betamax-flakiness analyze
+  betamax-flakiness analyze --format json
+  betamax-flakiness --cleanup
+  betamax-flakiness --collect "test name" true 150
+EOF
+}
+
+# Parse command line arguments
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--format)
+        REPORT_FORMAT="$2"
+        shift 2
+        ;;
+      -o|--output)
+        OUTPUT_DIR="$2"
+        shift 2
+        ;;
+      --collect)
+        local test_name="$2"
+        local passed="$3"
+        local duration_ms="$4"
+        record_test_execution "$test_name" "$passed" "$duration_ms"
+        exit 0
+        ;;
+      --cleanup)
+        CLEANUP=true
+        shift
+        ;;
+      -v|--verbose)
+        set -x
+        shift
+        ;;
+      analyze)
+        shift
+        ;;
+      clean)
+        cleanup_flakiness
+        exit 0
+        ;;
+      help|--help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        usage
+        exit 1
+        ;;
+    esac
+  done
+}
+
+# Main analysis workflow
+main() {
+  parse_args "$@"
+
+  # Initialize database if needed
+  if [[ ! -d "$FLAKINESS_TMPDIR" ]]; then
+    echo "No test data found. Run tests with --analyze-flakiness first."
+    exit 1
+  fi
+
+  mkdir -p "$OUTPUT_DIR"
+
+  # Compute metrics
+  echo "Computing flakiness metrics..."
+  local metrics_json
+  metrics_json=$(compute_flakiness_metrics)
+
+  # Generate reports in requested formats
+  export METRICS_JSON="$metrics_json"
+  for format in $(echo "$REPORT_FORMAT" | tr ',' ' '); do
+    case "$format" in
+      json)
+        export OUTPUT_FILE="$OUTPUT_DIR/flakiness-report.json"
+        generate_json_report "$OUTPUT_DIR/flakiness-report.json" "$metrics_json"
+        ;;
+      html)
+        export output_file="$OUTPUT_DIR/flakiness-report.html"
+        python3 << 'PYTHONEOF'
+import json
+import sys
+import os
+from datetime import datetime
+
+metrics_json = os.environ.get('metrics_json', '{}')
+output_file = os.environ.get('output_file', 'report.html')
+
+try:
+    metrics = json.loads(metrics_json)
+except:
+    metrics = {}
+
+flaky_tests = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('is_flaky', False)
+]
+
+stable_pass = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('pass_rate_pct') == 100
+]
+
+always_fail = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('pass_rate_pct') == 0
+]
+
+html = '''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Betamax Test Flakiness Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        h1 { font-size: 28px; margin-bottom: 10px; }
+        .timestamp { opacity: 0.9; font-size: 14px; }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .metric {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            gap: 15px;
+        }
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .metric-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            font-weight: 600;
+        }
+        .section { margin-bottom: 30px; }
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #dee2e6;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        tr:hover { background: #f8f9fa; }
+        .pass-rate {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .pass-rate.high { background: #d4edda; color: #155724; }
+        .pass-rate.medium { background: #fff3cd; color: #856404; }
+        .pass-rate.low { background: #f8d7da; color: #721c24; }
+        .pass-rate.zero { background: #e2e3e5; color: #383d41; }
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            background: white;
+            border-radius: 8px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Betamax Test Flakiness Report</h1>
+            <div class="timestamp">Generated: ''' + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + '''</div>
+        </header>
+
+        <div class="summary">
+            <div class="card">
+                <div class="metric">
+                    <div class="metric-value">''' + str(len(metrics)) + '''</div>
+                    <div class="metric-label">Total Tests</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="metric">
+                    <div class="metric-value">''' + str(len(flaky_tests)) + '''</div>
+                    <div class="metric-label">Flaky Tests</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="metric">
+                    <div class="metric-value">''' + str(len(always_fail)) + '''</div>
+                    <div class="metric-label">Always Failing</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="metric">
+                    <div class="metric-value">''' + str(len(stable_pass)) + '''</div>
+                    <div class="metric-label">Stable Passing</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Flaky Tests ''' + (f'({len(flaky_tests)})' if flaky_tests else '(0)') + '''</h2>
+'''
+
+if flaky_tests:
+    html += '''
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Pass Rate</th>
+                        <th>Runs</th>
+                        <th>Failures</th>
+                        <th>Max Consecutive Failures</th>
+                    </tr>
+                </thead>
+                <tbody>
+'''
+    for test in flaky_tests:
+        pass_rate = test.get('pass_rate_pct', 0)
+        if pass_rate < 33:
+            rate_class = 'low'
+        elif pass_rate < 66:
+            rate_class = 'medium'
+        else:
+            rate_class = 'high'
+
+        html += f'''
+                    <tr>
+                        <td>{test['test']}</td>
+                        <td><span class="pass-rate {rate_class}">{pass_rate:.1f}%</span></td>
+                        <td>{test.get('total_runs', 0)}</td>
+                        <td>{test.get('failures', 0)}</td>
+                        <td>{test.get('max_consecutive_failures', 0)}</td>
+                    </tr>
+'''
+    html += '''
+                </tbody>
+            </table>
+'''
+else:
+    html += '<div class="no-data">No flaky tests detected</div>'
+
+html += '''
+        </div>
+
+        <div class="section">
+            <h2>Always Failing Tests ''' + (f'({len(always_fail)})' if always_fail else '(0)') + '''</h2>
+'''
+
+if always_fail:
+    html += '''
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Total Runs</th>
+                    </tr>
+                </thead>
+                <tbody>
+'''
+    for test in always_fail:
+        html += f'''
+                    <tr>
+                        <td>{test['test']}</td>
+                        <td>{test.get('total_runs', 0)}</td>
+                    </tr>
+'''
+    html += '''
+                </tbody>
+            </table>
+'''
+else:
+    html += '<div class="no-data">No always-failing tests found</div>'
+
+html += '''
+        </div>
+
+        <footer>
+            <p>Test flakiness analysis by Betamax</p>
+        </footer>
+    </div>
+</body>
+</html>
+'''
+
+with open(output_file, 'w') as f:
+    f.write(html)
+
+print('Generated HTML report: ' + output_file)
+PYTHONEOF
+        ;;
+      txt)
+        export metrics_json
+        export output_file="$OUTPUT_DIR/flakiness-report.txt"
+        python3 << 'PYTHONEOF'
+import json
+import os
+from datetime import datetime
+
+metrics_json = os.environ.get('metrics_json', '{}')
+output_file = os.environ.get('output_file', 'report.txt')
+
+try:
+    metrics = json.loads(metrics_json)
+except:
+    metrics = {}
+
+flaky_tests = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('is_flaky', False)
+]
+
+always_fail = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('pass_rate_pct') == 0
+]
+
+stable_pass = [
+    {'test': name, **stats}
+    for name, stats in metrics.items()
+    if stats.get('pass_rate_pct') == 100
+]
+
+report = []
+report.append("=" * 80)
+report.append("BETAMAX TEST FLAKINESS REPORT")
+report.append("=" * 80)
+report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+report.append("")
+
+report.append("SUMMARY")
+report.append("-" * 80)
+report.append(f"Total Tests:        {len(metrics)}")
+report.append(f"Flaky Tests:        {len(flaky_tests)}")
+report.append(f"Always Failing:     {len(always_fail)}")
+report.append(f"Stable Passing:     {len(stable_pass)}")
+report.append("")
+
+if flaky_tests:
+    report.append("FLAKY TESTS (Pass Sometimes, Fail Other Times)")
+    report.append("-" * 80)
+    for test in sorted(flaky_tests, key=lambda x: x.get('pass_rate_pct', 0)):
+        report.append(f"  {test['test']}")
+        report.append(f"    Pass Rate: {test.get('pass_rate_pct', 0):.1f}% ({test.get('passes', 0)}/{test.get('total_runs', 0)})")
+        report.append(f"    Max Consecutive Failures: {test.get('max_consecutive_failures', 0)}")
+        if test.get('timing'):
+            timing = test['timing']
+            report.append(f"    Timing: {timing.get('mean_ms', 0):.0f}ms avg (σ: {timing.get('stdev_ms', 0):.0f}ms)")
+        report.append("")
+
+if always_fail:
+    report.append("ALWAYS FAILING TESTS (Never Pass)")
+    report.append("-" * 80)
+    for test in always_fail:
+        report.append(f"  {test['test']}")
+        report.append(f"    Runs: {test.get('total_runs', 0)}")
+        report.append("")
+
+report.append("")
+report.append("RECOMMENDATIONS")
+report.append("-" * 80)
+if flaky_tests:
+    report.append(f"• Investigate {len(flaky_tests)} flaky test(s) for:")
+    report.append("  - Timing-dependent behavior (race conditions)")
+    report.append("  - External service dependencies")
+    report.append("  - Non-deterministic test data")
+    report.append("  - Test ordering dependencies")
+else:
+    report.append("• All tests are stable or failing consistently")
+
+if always_fail:
+    report.append(f"• Fix {len(always_fail)} always-failing test(s)")
+
+report.append("=" * 80)
+
+with open(output_file, 'w') as f:
+    f.write("\n".join(report))
+
+print('Generated text report: ' + output_file)
+PYTHONEOF
+        ;;
+      *)
+        echo "Unknown format: $format" >&2
+        ;;
+    esac
+  done
+
+  # Cleanup if requested
+  if [[ "$CLEANUP" == true ]]; then
+    cleanup_flakiness
+    echo "Cleaned up flakiness data"
+  fi
+
+  echo "Reports generated in $OUTPUT_DIR"
+}
+
+main "$@"
