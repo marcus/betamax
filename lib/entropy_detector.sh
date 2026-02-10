@@ -6,11 +6,10 @@ extract_readme_features() {
   local readme_file="${1:-.}/README.md"
   [[ ! -f "$readme_file" ]] && return
 
-  # Features mentioned in README headers, feature lists, and options tables
-  grep -E "^##|^\|.*\|" "$readme_file" | \
-    grep -v "^##.*License" | \
-    sed 's/|//g' | \
-    grep -v "^$" | \
+  # Extract main feature headers (## level only, not ### subsections)
+  grep "^## " "$readme_file" | \
+    sed 's/^## //' | \
+    grep -v "License" | \
     sort -u
 }
 
@@ -77,19 +76,36 @@ analyze_git_patterns() {
 
 # Check for orphaned code (functions defined but never called)
 detect_orphaned_code() {
-  local dir="${1:-.}/lib"
-  [[ ! -d "$dir" ]] && return
+  local repo_dir="${1:-.}"
+  local lib_dir="$repo_dir/lib"
+  [[ ! -d "$lib_dir" ]] && return
 
-  find "$dir" -name "*.sh" -type f | while read -r file; do
-    grep -h "^[a-z_][a-z0-9_]*() {" "$file" | sed 's/() {//' | while read -r func; do
-      # Count calls to this function (excluding definition)
-      count=$(grep -r "$func" "$dir" --include="*.sh" | grep -vc "^[^:]*:$func() {" 2>/dev/null || echo "0")
-      count=$(echo "$count" | tr -d ' ')
-      if [[ "$count" == "0" ]]; then
-        echo "orphaned|${file##*/}|$func"
+  # Extract all defined functions
+  find "$lib_dir" -name "*.sh" -exec grep -h "^[a-z_][a-z0-9_]*() {" {} \; | \
+    sed 's/() {//' | sort -u | while read -r func; do
+      # Count how many times this function is called (excluding definition)
+      local lib_calls=$(grep -r "\b$func\b" "$lib_dir" --include="*.sh" 2>/dev/null | \
+        grep -v "^[^:]*:$func() {" | wc -l)
+
+      local total=$lib_calls
+
+      # Check main betamax script
+      if [[ -f "$repo_dir/betamax" ]]; then
+        local main_calls=$(grep -c "\b$func\b" "$repo_dir/betamax" 2>/dev/null || true)
+        total=$((total + (main_calls + 0)))
+      fi
+
+      # Check bin scripts
+      if [[ -d "$repo_dir/bin" ]]; then
+        local bin_calls=$(grep -r "\b$func\b" "$repo_dir/bin" 2>/dev/null | wc -l)
+        total=$((total + (bin_calls + 0)))
+      fi
+
+      # Report if orphaned
+      if [[ $total -eq 0 ]]; then
+        echo "orphaned|function|$func"
       fi
     done
-  done
 }
 
 # Compute entropy score based on discrepancies

@@ -49,24 +49,29 @@ assert_function_exists "analyze_git_patterns"
 echo ""
 echo "=== Testing README Feature Extraction ==="
 readme_features=$(extract_readme_features "$SCRIPT_DIR")
-if [[ $(echo "$readme_features" | wc -w) -gt 5 ]]; then
+readme_count=$(echo "$readme_features" | grep -c . || echo 0)
+# Should extract main section headers (## level only), not all headers/table rows
+# Expected ~11 features (Installation, Quick Start, Recording Sessions, etc.)
+if [[ $readme_count -ge 9 && $readme_count -le 20 ]]; then
   ((tests_passed++))
-  echo "✓ Extracted features from README: $(echo "$readme_features" | wc -w) features"
+  echo "✓ Extracted features from README: $readme_count features (reasonable count)"
 else
   ((tests_failed++))
-  echo "✗ Failed to extract features from README"
+  echo "✗ Feature count suspicious: $readme_count (expected 9-20, not overshooting)"
 fi
 
 # Test 3: Extract shell functions
 echo ""
 echo "=== Testing Shell Function Extraction ==="
 shell_funcs=$(extract_shell_functions "$SCRIPT_DIR")
-if [[ $(echo "$shell_funcs" | wc -w) -gt 5 ]]; then
+shell_count=$(echo "$shell_funcs" | grep -c . || echo 0)
+# Expected ~51 functions in lib/
+if [[ $shell_count -ge 40 && $shell_count -le 70 ]]; then
   ((tests_passed++))
-  echo "✓ Extracted shell functions: $(echo "$shell_funcs" | wc -w) functions"
+  echo "✓ Extracted shell functions: $shell_count functions (correct)"
 else
   ((tests_failed++))
-  echo "✗ Failed to extract shell functions"
+  echo "✗ Function count off: $shell_count (expected 40-70)"
 fi
 
 # Test 4: Entropy score calculation
@@ -98,12 +103,21 @@ fi
 echo ""
 echo "=== Testing Orphaned Code Detection ==="
 orphaned=$(detect_orphaned_code "$SCRIPT_DIR" 2>/dev/null | wc -l)
-if [[ $orphaned -ge 0 ]]; then
+# Should find exactly 1 orphaned function (extract_keys_features)
+if [[ $orphaned -eq 1 ]]; then
   ((tests_passed++))
-  echo "✓ Detected $orphaned orphaned items"
+  echo "✓ Detected correct orphaned count: 1 (extract_keys_features)"
+  # Verify it's the right one
+  if detect_orphaned_code "$SCRIPT_DIR" 2>/dev/null | grep -q "extract_keys_features"; then
+    ((tests_passed++))
+    echo "✓ Orphaned function correctly identified"
+  else
+    ((tests_failed++))
+    echo "✗ Wrong orphaned function detected"
+  fi
 else
   ((tests_failed++))
-  echo "✗ Failed to detect orphaned code"
+  echo "✗ Orphaned count wrong: $orphaned (expected 1)"
 fi
 
 # Test 7: Git pattern analysis

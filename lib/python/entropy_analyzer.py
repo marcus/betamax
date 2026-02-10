@@ -48,12 +48,12 @@ class EntropyAnalyzer:
         features = set()
         with open(self.readme) as f:
             content = f.read()
-            # Extract section headers
+            # Extract main feature headers (## level only, not ### subsections)
             headers = re.findall(r"^## (.+?)$", content, re.MULTILINE)
-            features.update(h.lower() for h in headers)
-            # Extract options from tables
-            options = re.findall(r"\|\s+(\w+(?:-\w+)*)\s+\|", content)
-            features.update(o.lower() for o in options)
+            # Filter out non-feature headers
+            for h in headers:
+                if "License" not in h:
+                    features.add(h.lower())
         return features
 
     def extract_shell_functions(self) -> Set[str]:
@@ -101,20 +101,42 @@ class EntropyAnalyzer:
         # Get all defined functions
         all_functions = self.extract_shell_functions()
 
-        # Check each function for calls
+        # Check each function for calls across all relevant files
         for func in all_functions:
             call_count = 0
+
+            # Search in lib/ directory (all .sh files)
             for sh_file in self.lib_dir.glob("*.sh"):
                 with open(sh_file) as f:
                     content = f.read()
-                    # Count calls (excluding definition)
-                    pattern = f"({func}|call {func})"
+                    # Use word boundaries to avoid matching substrings
+                    pattern = rf"\b{re.escape(func)}\b"
                     matches = len(re.findall(pattern, content))
-                    # Subtract definition itself
-                    definition = re.search(rf"^{func}\(\) \{{", content, re.MULTILINE)
+                    # Subtract the definition itself
+                    definition = re.search(rf"^{re.escape(func)}\(\) \{{", content, re.MULTILINE)
                     if definition:
                         matches -= 1
                     call_count += matches
+
+            # Search in main betamax script
+            main_script = self.repo_dir / "betamax"
+            if main_script.exists():
+                with open(main_script) as f:
+                    content = f.read()
+                    pattern = rf"\b{re.escape(func)}\b"
+                    call_count += len(re.findall(pattern, content))
+
+            # Search in bin/ scripts (ALL bin scripts, including entropy)
+            if self.bin_dir.exists():
+                for script in self.bin_dir.glob("*"):
+                    if script.is_file():
+                        try:
+                            with open(script) as f:
+                                content = f.read()
+                                pattern = rf"\b{re.escape(func)}\b"
+                                call_count += len(re.findall(pattern, content))
+                        except (UnicodeDecodeError, PermissionError):
+                            pass
 
             if call_count == 0:
                 orphaned.append(("function", func))
