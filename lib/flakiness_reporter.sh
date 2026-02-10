@@ -67,7 +67,7 @@ import sys
 from datetime import datetime
 import os
 
-metrics_json = os.environ.get('metrics_json', '{}')
+metrics_json = os.environ.get('METRICS_JSON', '{}')
 
 try:
     metrics = json.loads(metrics_json)
@@ -324,7 +324,7 @@ html += '''
 </html>
 '''
 
-with open(os.environ.get('output_file', 'report.html'), 'w') as f:
+with open(os.environ.get('OUTPUT_FILE', 'report.html'), 'w') as f:
     f.write(html)
 
 print('Generated HTML report')
@@ -334,14 +334,16 @@ PYTHON
 # Generate plain text report
 generate_text_report() {
   local output_file="$1"
-  local metrics_json="$2"
 
-  python3 << PYTHON
+  python3 << 'PYTHON'
 import json
+import os
 from datetime import datetime
 
+metrics_json = os.environ.get('METRICS_JSON', '{}')
+
 try:
-    metrics = json.loads('$metrics_json')
+    metrics = json.loads(metrics_json)
 except:
     metrics = {}
 
@@ -415,10 +417,10 @@ if always_fail:
 
 report.append("=" * 80)
 
-with open('$output_file', 'w') as f:
+with open(os.environ.get('OUTPUT_FILE', 'report.txt'), 'w') as f:
     f.write("\n".join(report))
 
-print('Generated text report: $output_file')
+print('Generated text report: ' + os.environ.get('OUTPUT_FILE', 'report.txt'))
 PYTHON
 }
 
