@@ -59,7 +59,6 @@ PYTHON
 # Generate HTML report
 generate_html_report() {
   local output_file="$1"
-  local metrics_json="$2"
 
   python3 << 'PYTHON'
 import json
