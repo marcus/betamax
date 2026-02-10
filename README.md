@@ -523,6 +523,70 @@ Features:
 - Circular import detection with helpful error messages
 - Maximum depth of 10 nested imports
 
+## Entropy Detection
+
+Detect scope creep and roadmap drift with the entropy detector:
+
+```bash
+# Check current project entropy
+betamax entropy .
+
+# Detailed analysis with recommendations
+betamax entropy -v --fix .
+
+# JSON output for CI/automation
+betamax entropy -j . | jq .
+
+# Python analyzer for programmatic access
+python3 -c "
+from lib.python.entropy_analyzer import EntropyAnalyzer
+analyzer = EntropyAnalyzer()
+result = analyzer.analyze()
+print(f'Entropy: {result.entropy_score}/100 ({result.status})')
+"
+```
+
+### What is Entropy?
+
+Roadmap entropy measures the mismatch between documented features and implementation:
+- **0-20**: Healthy - documentation and code are aligned
+- **20-50**: Warning - some scope creep or unimplemented features
+- **50-100**: Critical - significant drift between docs and implementation
+
+### Analysis Details
+
+The entropy detector examines:
+- **Documentation**: Features mentioned in README.md
+- **Implementation**: Shell functions, Python modules, bin scripts
+- **Git patterns**: Feature vs bugfix ratio in commit history
+- **Code quality**: Orphaned functions, undocumented code
+- **Feature gaps**: Documented but unimplemented features
+
+### Integration
+
+Enable entropy checks in pre-commit hooks:
+
+```bash
+# Copy pre-commit hook
+cp .git/hooks/pre-commit-entropy .git/hooks/pre-commit-entropy.sh
+
+# Add to your .git/hooks/pre-commit
+.git/hooks/pre-commit-entropy.sh
+```
+
+Or in CI/CD pipelines:
+
+```yaml
+# Example GitHub Actions
+- name: Check roadmap entropy
+  run: |
+    entropy=$(betamax entropy -q)
+    if [ $entropy -gt 70 ]; then
+      echo "High entropy ($entropy/100): Address roadmap drift"
+      exit 1
+    fi
+```
+
 ## Design Philosophy
 
 Betamax is inspired by [VHS](https://github.com/charmbracelet/vhs) but takes a different approach:

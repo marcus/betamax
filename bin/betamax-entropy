@@ -1,0 +1,197 @@
+#!/bin/bash
+# betamax-entropy - Roadmap entropy detector
+# Detects scope creep and drift in project documentation vs implementation
+
+set -e
+
+# Resolve script directory
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SOURCE")/.." && pwd)"
+
+source "$SCRIPT_DIR/lib/entropy_detector.sh"
+
+show_help() {
+  cat << 'EOF'
+betamax entropy - Detect roadmap scope creep and drift
+
+Usage:
+  betamax entropy [options] [directory]
+
+Options:
+  -h, --help              Show this help message
+  -j, --json              Output as JSON
+  -v, --verbose           Show detailed analysis
+  -q, --quiet             Only show entropy score
+  -r, --report            Generate full report
+  --fix                   Suggest fixes for detected issues
+
+Examples:
+  betamax entropy .              Check current directory
+  betamax entropy -j ~/project   Get JSON output
+  betamax entropy -v --fix .     Detailed analysis with fixes
+EOF
+}
+
+main() {
+  local repo_dir="."
+  local json_output=false
+  local verbose=false
+  local quiet=false
+  local show_fixes=false
+  local show_report=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        show_help
+        exit 0
+        ;;
+      -j|--json)
+        json_output=true
+        ;;
+      -v|--verbose)
+        verbose=true
+        ;;
+      -q|--quiet)
+        quiet=true
+        ;;
+      -r|--report)
+        show_report=true
+        ;;
+      --fix)
+        show_fixes=true
+        ;;
+      -*)
+        echo "Error: Unknown option: $1" >&2
+        show_help >&2
+        exit 1
+        ;;
+      *)
+        repo_dir="$1"
+        ;;
+    esac
+    shift
+  done
+
+  # Validate directory
+  if [[ ! -d "$repo_dir" ]]; then
+    echo "Error: Directory not found: $repo_dir" >&2
+    exit 1
+  fi
+
+  if [[ "$json_output" == true ]]; then
+    generate_entropy_report "$repo_dir"
+  else
+    local entropy_score=$(compute_entropy_score "$repo_dir")
+    local status=""
+
+    if [[ $entropy_score -lt 20 ]]; then
+      status="✓ healthy"
+    elif [[ $entropy_score -lt 50 ]]; then
+      status="⚠ warning"
+    else
+      status="✗ critical"
+    fi
+
+    if [[ "$quiet" == false ]]; then
+      echo "Roadmap Entropy Report"
+      echo "====================="
+      echo ""
+      echo "Entropy Score: $entropy_score/100 ($status)"
+      echo ""
+    else
+      echo "$entropy_score"
+      exit 0
+    fi
+
+    if [[ "$verbose" == true ]] || [[ "$show_report" == true ]]; then
+      echo "Detailed Analysis:"
+      echo "------------------"
+      echo ""
+
+      echo "Documentation:"
+      local readme_features=$(extract_readme_features "$repo_dir" | wc -l)
+      echo "  • Features documented in README: $readme_features"
+
+      echo ""
+      echo "Implementation:"
+      local shell_funcs=$(extract_shell_functions "$repo_dir" 2>/dev/null | wc -l)
+      local python_funcs=$(extract_python_functions "$repo_dir" 2>/dev/null | wc -l)
+      local bin_scripts=$(extract_bin_scripts "$repo_dir" | wc -l)
+      echo "  • Shell functions: $shell_funcs"
+      echo "  • Python functions: $python_funcs"
+      echo "  • Bin scripts: $bin_scripts"
+
+      echo ""
+      echo "Code Quality:"
+      local orphaned=$(detect_orphaned_code "$repo_dir" | wc -l)
+      echo "  • Orphaned functions: $orphaned"
+      if [[ $orphaned -gt 0 ]]; then
+        detect_orphaned_code "$repo_dir" | while read -r entry; do
+          IFS='|' read -r type file func <<< "$entry"
+          echo "    - $func (in $file)"
+        done
+      fi
+
+      echo ""
+      echo "Git Patterns (last 50 commits):"
+      local feat_count=$(analyze_git_patterns "$repo_dir" | grep -c "^feature|")
+      local bug_count=$(analyze_git_patterns "$repo_dir" | grep -c "^bugfix|")
+      local refactor_count=$(analyze_git_patterns "$repo_dir" | grep -c "^refactor|")
+      local doc_count=$(analyze_git_patterns "$repo_dir" | grep -c "^documentation|")
+      echo "  • Features: $feat_count"
+      echo "  • Bugfixes: $bug_count"
+      echo "  • Refactors: $refactor_count"
+      echo "  • Documentation: $doc_count"
+
+      echo ""
+      echo "Scope Creep (undocumented code):"
+      local creep=$(detect_scope_creep "$repo_dir" | wc -l)
+      if [[ $creep -gt 0 ]]; then
+        detect_scope_creep "$repo_dir" | while read -r entry; do
+          IFS='|' read -r type name <<< "$entry"
+          echo "  • $type: $name"
+        done
+      else
+        echo "  • None detected"
+      fi
+
+      echo ""
+      echo "Unimplemented Features:"
+      local unimplemented=$(detect_unimplemented_features "$repo_dir")
+      if [[ -n "$unimplemented" ]]; then
+        echo "$unimplemented" | while read -r feature; do
+          echo "  • $feature"
+        done
+      else
+        echo "  • None detected"
+      fi
+    fi
+
+    if [[ "$show_fixes" == true ]]; then
+      echo ""
+      echo "Recommendations:"
+      echo "----------------"
+      if [[ $(detect_orphaned_code "$repo_dir" | wc -l) -gt 0 ]]; then
+        echo "• Remove or document orphaned functions"
+      fi
+      if [[ $(detect_scope_creep "$repo_dir" | wc -l) -gt 0 ]]; then
+        echo "• Document undocumented features in README"
+      fi
+      local unimpl=$(detect_unimplemented_features "$repo_dir")
+      if [[ -n "$unimpl" ]]; then
+        echo "• Implement or remove documentation for: $unimpl"
+      fi
+      if [[ $entropy_score -gt 50 ]]; then
+        echo "• High entropy detected: consider feature freeze to address backlog"
+      fi
+    fi
+  fi
+}
+
+main "$@"

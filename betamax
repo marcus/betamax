@@ -13,6 +13,18 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
+# Check for entropy subcommand before sourcing modules
+if [[ "${1:-}" == "entropy" ]]; then
+  ENTROPY_SCRIPT="$SCRIPT_DIR/bin/betamax-entropy"
+  if [[ ! -x "$ENTROPY_SCRIPT" ]]; then
+    echo "Error: betamax-entropy not found or not executable" >&2
+    echo "Expected location: $ENTROPY_SCRIPT" >&2
+    exit 1
+  fi
+  shift
+  exec "$ENTROPY_SCRIPT" "$@"
+fi
+
 # Check for record subcommand before sourcing modules
 if [[ "${1:-}" == "record" ]]; then
   RECORD_SCRIPT="$SCRIPT_DIR/bin/betamax-record"
