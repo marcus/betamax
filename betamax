@@ -13,12 +13,14 @@ while [[ -L "$SOURCE" ]]; do
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
 
+# Source logging module first for early error handling
+source "$SCRIPT_DIR/lib/logging.sh"
+
 # Check for record subcommand before sourcing modules
 if [[ "${1:-}" == "record" ]]; then
   RECORD_SCRIPT="$SCRIPT_DIR/bin/betamax-record"
   if [[ ! -x "$RECORD_SCRIPT" ]]; then
-    echo "Error: betamax-record not found or not executable" >&2
-    echo "Expected location: $RECORD_SCRIPT" >&2
+    log_error "startup" "betamax-record not found or not executable at $RECORD_SCRIPT"
     exit 1
   fi
   shift
@@ -29,15 +31,14 @@ fi
 if [[ "${1:-}" == "capture" ]]; then
   CAPTURE_SCRIPT="$SCRIPT_DIR/bin/betamax-capture"
   if [[ ! -x "$CAPTURE_SCRIPT" ]]; then
-    echo "Error: betamax-capture not found or not executable" >&2
-    echo "Expected location: $CAPTURE_SCRIPT" >&2
+    log_error "startup" "betamax-capture not found or not executable at $CAPTURE_SCRIPT"
     exit 1
   fi
   shift
   exec "$CAPTURE_SCRIPT" "$@"
 fi
 
-# Source modules
+# Source remaining modules
 source "$SCRIPT_DIR/lib/config.sh"
 source "$SCRIPT_DIR/lib/args.sh"
 source "$SCRIPT_DIR/lib/keys.sh"
@@ -48,8 +49,8 @@ source "$SCRIPT_DIR/lib/runner.sh"
 
 # Check for bc (required for timing calculations)
 if ! command -v bc &>/dev/null; then
-  echo "Error: bc is required for betamax timing calculations" >&2
-  echo "Install with: brew install bc (macOS) or apt install bc (Linux)" >&2
+  log_error "startup" "bc is required for betamax timing calculations"
+  log_info "Install with: brew install bc (macOS) or apt install bc (Linux)"
   exit 1
 fi
 
@@ -160,7 +161,7 @@ main() {
 
   # Exit early if only validating
   if [[ "$VALIDATE_ONLY" == true ]]; then
-    echo "Validation passed"
+    log_info "validation" "Keys file validated successfully"
     exit 0
   fi
 
