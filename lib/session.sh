@@ -20,27 +20,27 @@ session_wait_for_pattern() {
     return 0
   fi
 
-  echo "Waiting for '$WAIT_PATTERN'..."
+  log_debug "session" "Waiting for pattern: $WAIT_PATTERN"
   for ((i=0; i<TIMEOUT*2; i++)); do
     if tmux_cmd capture-pane -t "$SESSION" -p 2>/dev/null | grep -q "$WAIT_PATTERN"; then
-      echo "Pattern found, sending keys..."
+      log_info "session" "Pattern found, proceeding with keys"
       sleep "$DELAY_SEC"
       return 0
     fi
     sleep 0.5
   done
 
-  echo "Error: Timeout waiting for pattern '$WAIT_PATTERN'" >&2
+  log_error "session" "Timeout waiting for pattern '$WAIT_PATTERN' (waited ${TIMEOUT}s)"
   tmux_cmd kill-session -t "$SESSION" 2>/dev/null || true
   exit 1
 }
 
 session_cleanup() {
   if [[ "$KEEP" == true ]]; then
-    echo "Session '$SESSION' kept alive. Attach with: tmux -L $TMUX_SOCKET attach -t $SESSION"
+    log_info "session" "Session '$SESSION' kept alive. Attach with: tmux -L $TMUX_SOCKET attach -t $SESSION"
   else
     sleep "$DELAY_SEC"
     tmux_cmd kill-session -t "$SESSION" 2>/dev/null || true
-    echo "Done"
+    log_info "session" "Completed successfully"
   fi
 }

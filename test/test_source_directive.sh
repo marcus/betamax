@@ -154,7 +154,7 @@ fi
 # Summary
 echo ""
 echo "=== Results: $PASSED/$TESTS tests passed ==="
-if [[ $PASSED -eq $TESTS ]]; then
+if [[ "$PASSED" -eq "$TESTS" ]]; then
   exit 0
 else
   exit 1

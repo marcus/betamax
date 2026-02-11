@@ -243,7 +243,7 @@ parse_args() {
         if [[ -z "$COMMAND" ]]; then
           COMMAND="$1"
         else
-          echo "Error: Unexpected argument: $1" >&2
+          log_error "args" "Unexpected argument: $1"
           exit 1
         fi
         shift
@@ -252,8 +252,8 @@ parse_args() {
   done
 
   if [[ -z "$COMMAND" ]]; then
-    echo "Error: No command specified" >&2
-    echo "Usage: betamax [options] <command> -- <key1> <key2> ..." >&2
+    log_error "args" "No command specified"
+    log_info "Usage: betamax [options] <command> -- <key1> <key2> ..."
     exit 1
   fi
 }

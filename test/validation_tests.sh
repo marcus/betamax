@@ -81,7 +81,7 @@ expect_valid() {
   local exit_code=0
   output=$("$PROJECT_DIR/betamax" echo --validate-only -f "$tmpfile" 2>&1) || exit_code=$?
 
-  if [[ $exit_code -eq 0 ]] && echo "$output" | grep -q "Validation passed"; then
+  if [[ "$exit_code" -eq 0 ]] && echo "$output" | grep -q "Validation passed"; then
     pass "$desc"
   else
     fail "$desc (got: '$output')"
@@ -372,7 +372,7 @@ summary() {
   echo -e "Validation tests: ${GREEN}$PASSED passed${NC}, ${RED}$FAILED failed${NC}"
   echo "================================"
 
-  if [[ $FAILED -gt 0 ]]; then
+  if [[ "$FAILED" -gt 0 ]]; then
     exit 1
   fi
 }

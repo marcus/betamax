@@ -100,9 +100,9 @@ test_capture_formats() {
   [[ -f "$OUTPUT_DIR/test_all.html" ]] && { ((all_count++)) || true; }
   [[ -f "$OUTPUT_DIR/test_all.png" ]] && { ((all_count++)) || true; }
 
-  if [[ $all_count -eq 3 ]]; then
+  if [[ "$all_count" -eq 3 ]]; then
     pass "all format: created txt, html, and png"
-  elif [[ $all_count -gt 0 ]]; then
+  elif [[ "$all_count" -gt 0 ]]; then
     pass "all format: created $all_count/3 formats (based on available tools)"
   else
     fail "all format: no files created"
@@ -149,7 +149,7 @@ test_inline_delay() {
   end=$(date +%s)
   elapsed=$((end - start))
 
-  if [[ $elapsed -ge 1 ]]; then
+  if [[ "$elapsed" -ge 1 ]]; then
     pass "inline delay: respected custom timing"
   else
     fail "inline delay: timing not respected (elapsed: ${elapsed}s)"
@@ -167,7 +167,7 @@ test_sleep_directive() {
   end=$(date +%s)
   elapsed=$((end - start))
 
-  if [[ $elapsed -ge 1 ]]; then
+  if [[ "$elapsed" -ge 1 ]]; then
     pass "@sleep: waited 1000ms"
   else
     fail "@sleep: did not wait (elapsed: ${elapsed}s)"
@@ -209,7 +209,7 @@ test_sidecar() {
     fi
   done
 
-  if [[ $captured -eq 5 ]]; then
+  if [[ "$captured" -eq 5 ]]; then
     pass "sidecar: all 5 plugins captured successfully"
   fi
 }
@@ -301,7 +301,7 @@ summary() {
   echo -e "Results: ${GREEN}$PASSED passed${NC}, ${RED}$FAILED failed${NC}"
   echo "================================"
 
-  if [[ $FAILED -gt 0 ]]; then
+  if [[ "$FAILED" -gt 0 ]]; then
     exit 1
   fi
 }

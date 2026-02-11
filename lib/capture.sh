@@ -13,14 +13,14 @@ capture_to_file() {
 
   case "$format" in
     txt)
-      echo "Saved: $txt_file"
+      log_info "capture" "Saved text output: $txt_file"
       ;;
     html)
       if command -v aha &>/dev/null; then
         cat "$txt_file" | aha --black > "$OUTPUT_DIR/$name.html"
-        echo "Saved: $OUTPUT_DIR/$name.html"
+        log_info "capture" "Saved HTML output: $OUTPUT_DIR/$name.html"
       else
-        echo "Warning: aha not installed, skipping HTML"
+        log_warning "capture" "aha not installed, skipping HTML conversion"
       fi
       rm -f "$txt_file"
       ;;
@@ -120,7 +120,7 @@ if not apply_decorations_to_png(
           echo "Saved: $OUTPUT_DIR/$name.png"
         fi
       else
-        echo "Warning: termshot not installed, skipping PNG"
+        log_warning "capture" "termshot not installed, skipping PNG"
       fi
       rm -f "$txt_file"
       ;;
@@ -246,17 +246,17 @@ capture_final() {
 
 recording_start() {
   if [[ "$RECORDING" == true ]]; then
-    echo "Warning: Recording already in progress"
+    log_warning "recording" "Recording already in progress"
     return
   fi
 
   if ! command -v termshot &>/dev/null; then
-    echo "Error: termshot required for GIF recording"
+    log_error "recording" "termshot required for GIF recording"
     return 1
   fi
 
   if ! command -v ffmpeg &>/dev/null; then
-    echo "Error: ffmpeg required for GIF recording"
+    log_error "recording" "ffmpeg required for GIF recording"
     return 1
   fi
 
@@ -266,64 +266,64 @@ recording_start() {
   RECORDING_HIDDEN=false
   RECORDING_FRAME=0
   RECORDING_COLS=$(tmux_cmd display-message -t "$SESSION" -p '#{pane_width}')
-  echo "Recording started"
+  log_debug "recording" "Recording started with $RECORDING_COLS columns"
 }
 
 recording_pause() {
   if [[ "$RECORDING" != true ]]; then
-    echo "Warning: Not currently recording"
+    log_warning "recording" "Not currently recording"
     return
   fi
   if [[ "$RECORDING_PAUSED" == true ]]; then
-    echo "Warning: Recording already paused"
+    log_warning "recording" "Recording already paused"
     return
   fi
   RECORDING_PAUSED=true
-  echo "Recording paused"
+  log_info "recording" "Recording paused at frame $RECORDING_FRAME"
 }
 
 recording_resume() {
   if [[ "$RECORDING" != true ]]; then
-    echo "Warning: Not currently recording"
+    log_warning "recording" "Not currently recording"
     return
   fi
   if [[ "$RECORDING_PAUSED" != true ]]; then
-    echo "Warning: Recording not paused"
+    log_warning "recording" "Recording not paused"
     return
   fi
   RECORDING_PAUSED=false
   recording_capture_frame  # Capture resume state
-  echo "Recording resumed"
+  log_info "recording" "Recording resumed, continuing from frame $RECORDING_FRAME"
 }
 
 # Hide recording - keys execute but frames not captured
 # Unlike pause, @show doesn't auto-capture a frame
 recording_hide() {
   if [[ "$RECORDING" != true ]]; then
-    echo "Warning: Not currently recording"
+    log_warning "recording" "Not currently recording"
     return
   fi
   if [[ "$RECORDING_HIDDEN" == true ]]; then
-    echo "Warning: Recording already hidden"
+    log_warning "recording" "Recording already hidden"
     return
   fi
   RECORDING_HIDDEN=true
-  echo "Recording hidden"
+  log_debug "recording" "Recording hidden (keys executing without frame capture)"
 }
 
 # Show recording - resume capturing frames
 # Unlike resume, doesn't auto-capture a frame
 recording_show() {
   if [[ "$RECORDING" != true ]]; then
-    echo "Warning: Not currently recording"
+    log_warning "recording" "Not currently recording"
     return
   fi
   if [[ "$RECORDING_HIDDEN" != true ]]; then
-    echo "Warning: Recording not hidden"
+    log_warning "recording" "Recording not hidden"
     return
   fi
   RECORDING_HIDDEN=false
-  echo "Recording shown"
+  log_debug "recording" "Recording shown (resuming frame capture)"
 }
 
 # Capture a single frame (called after each key when recording)
@@ -384,7 +384,7 @@ recording_stop() {
   local output_file="$1"
 
   if [[ "$RECORDING" != true ]]; then
-    echo "Warning: No recording in progress"
+    log_warning "recording" "No recording in progress"
     return
   fi
 
@@ -394,13 +394,13 @@ recording_stop() {
   local frame_count=$RECORDING_FRAME
 
   if [[ "$frame_count" -eq 0 ]]; then
-    echo "Error: No frames captured"
+    log_error "recording" "No frames captured during recording"
     rm -rf "$RECORDING_DIR"
     RECORDING=false
     return 1
   fi
 
-  echo "Captured $frame_count frames"
+  log_debug "recording" "Captured $frame_count frames, processing for GIF"
 
   # Apply loop offset (duplicates initial frames at end)
   apply_loop_offset "$frame_count"

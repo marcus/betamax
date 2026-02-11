@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
 
 from lib.python.recorder import TerminalRecorder
 from lib.python.keys_generator import KeysGenerator
+from lib.python import log
 
 
 def parse_args():
@@ -146,9 +147,8 @@ def main():
 
     # Print startup message
     frame_hint = f" Press {args.frame_key} to mark frames." if not args.auto_frame else ""
-    print(f"Recording started.{frame_hint} Ctrl+D or exit to stop.", file=sys.stderr)
-    print(f"Command: {' '.join(args.command)}", file=sys.stderr)
-    print(file=sys.stderr)
+    log.info(f"Recording started. Ctrl+D or exit to stop.{frame_hint}")
+    log.debug(f"Recording: {' '.join(args.command)}", "record")
 
     # Create and run recorder
     recorder = TerminalRecorder(args.output, args.command, options)
@@ -156,7 +156,7 @@ def main():
     try:
         recorder.record()
     except KeyboardInterrupt:
-        print("\nRecording interrupted.", file=sys.stderr)
+        log.info("Recording interrupted by user")
 
     # Get recorded data
     keystrokes = recorder.get_keystrokes()
@@ -164,7 +164,7 @@ def main():
     duration = recorder.get_duration()
 
     if not keystrokes:
-        print("No keystrokes recorded.", file=sys.stderr)
+        log.error("No keystrokes recorded during session", "record")
         sys.exit(1)
 
     # Generate .keys file
@@ -187,16 +187,11 @@ def main():
 
     # Print summary (use filtered count for accurate user keystroke count)
     user_keystroke_count = generator.count_user_keystrokes()
-    print(file=sys.stderr)
-    print(
-        f"Recording saved to {args.output} "
-        f"({user_keystroke_count} keystrokes, {duration:.1f}s)",
-        file=sys.stderr
-    )
+    log.info(f"Keys file saved: {args.output} ({user_keystroke_count} keystrokes, {duration:.1f}s)", "record")
 
     # Generate GIF if requested
     if args.gif:
-        print("Generating GIF...", file=sys.stderr)
+        log.info("Generating GIF from keys file", "record")
 
         # Find betamax script
         betamax_script = os.path.join(os.path.dirname(SCRIPT_DIR), 'betamax')
@@ -212,12 +207,12 @@ def main():
                 ],
                 check=True
             )
-            print(f"Saved: {args.gif}", file=sys.stderr)
+            log.info(f"GIF saved: {args.gif}", "record")
         except subprocess.CalledProcessError as e:
-            print(f"GIF generation failed: {e}", file=sys.stderr)
+            log.error(f"GIF generation failed: {e}", "record")
             sys.exit(1)
         except FileNotFoundError:
-            print(f"betamax not found at {betamax_script}", file=sys.stderr)
+            log.error(f"betamax not found at {betamax_script}", "record")
             sys.exit(1)
 
 

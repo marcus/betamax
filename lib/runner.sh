@@ -33,14 +33,14 @@ run_keys() {
           MS="$sleep_spec"
         fi
         local SLEEP_SEC=$(echo "scale=3; $MS / 1000" | bc)
-        echo "Sleeping ${MS}ms..."
+        log_debug "runner" "Sleeping ${MS}ms"
         [[ "$CAPTURE_FRAMES" == true ]] && recording_capture_frame
         sleep "$SLEEP_SEC"
         [[ "$CAPTURE_FRAMES" == true ]] && recording_capture_frame
         ;;
       @wait:*)
         local PATTERN="${key#@wait:}"
-        echo "Waiting for '$PATTERN'..."
+        log_debug "runner" "Waiting for pattern: $PATTERN"
 
         local REGEX GREP_OPTS
         if [[ "$PATTERN" =~ ^/(.+)/$ ]]; then
@@ -53,13 +53,14 @@ run_keys() {
 
         for ((i=0; i<TIMEOUT*2; i++)); do
           if tmux_cmd capture-pane -t "$SESSION" -p 2>/dev/null | grep -q $GREP_OPTS "$REGEX"; then
+            log_debug "runner" "Pattern matched"
             break
           fi
           sleep 0.5
         done
         ;;
       @pause)
-        echo "Paused. Press Enter to continue..."
+        log_info "runner" "Paused. Press Enter to continue..."
         read -r
         ;;
       @record:start)

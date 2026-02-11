@@ -108,7 +108,7 @@ validate_keys_file() {
   # Validate repeat/end structure
   validate_repeat_structure || ((errors++))
 
-  if [[ $errors -gt 0 ]]; then
+  if [[ "$errors" -gt 0 ]]; then
     exit 1
   fi
 
