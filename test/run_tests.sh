@@ -115,7 +115,7 @@ test_basic() {
   echo "=== Testing basic functionality ==="
 
   # Test help
-  if "$PROJECT_DIR/betamax" --help | grep -q "Terminal session recorder"; then
+  if "$PROJECT_DIR/betamax" --help | grep -q "^Usage:"; then
     pass "help: displays usage"
   else
     fail "help: missing usage text"
