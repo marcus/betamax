@@ -5,6 +5,7 @@
 .sidecar-agent
 .sidecar-task
 .sidecar-pr
+.sidecar-base
 .sidecar-start.sh
 .td-root
 .sidecar/
@@ -33,6 +34,8 @@ __pycache__/
 captures/
 recording.keys
 *.cast
+# Regenerated from scratch by test/run_tests.sh on every run
+test/output/
 
 # macOS
 .DS_Store
